@@ -10,13 +10,22 @@ def power_3(val):
     return val**3
 
 def power_minus1(val):
-    return np.power(float(val), -1)
+    if isinstance(val, int):
+        return np.power(float(val), -1)
+    else:
+        return np.power(val.astype(float), -1)
 
 def power_minus2(val):
-    return np.power(float(val), -2)
+    if isinstance(val, int):
+        return np.power(float(val), -2)
+    else:
+        return np.power(val.astype(float), -2)
 
 def power_minus3(val):
-    return np.power(float(val), -3)
+    if isinstance(val, int):
+        return np.power(float(val), -3)
+    else:
+        return np.power(val.astype(float), -3)
 
 OPERATIONS = {
     "-": "np.subtract",

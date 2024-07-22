@@ -1,23 +1,28 @@
+import re
+import math
 import random
-import operations
 
 import numpy as np
+import pandas as pd
 
 from node import Node
 from typing import List
+from operations import *
 from node import NodeType
 
 class BinaryTree:
-    def __init__(self, max_depth: int, variables: List[str], unary_operators: List[str], binary_operators: List[str]):
-        self.max_depth = max_depth
+    def __init__(self, max_possible_depth: int, variables: List[str], unary_operators: List[str], binary_operators: List[str]):
+        self.max_possible_depth = max_possible_depth
         self.variables = variables
         self.unary_operators = unary_operators
         self.binary_operators = binary_operators
         self.operators = unary_operators + binary_operators
 
         self.index = 0
-        self.root = self._build_tree(max_depth)
+        self.max_depth = random.randint(0, max_possible_depth)
+        self.root = self._build_tree(self.max_depth)
         self.equation = self.build_equation(self.root)
+        self.fitness = None
 
     def _build_tree(self, depth: int) -> Node:
         if depth == 0:
@@ -70,7 +75,7 @@ class BinaryTree:
             return ""
         
         if node.value in self.operators:
-            operation = str(operations.OPERATIONS[node.value])
+            operation = str(OPERATIONS[node.value])
         else:
             operation = str(node.value)
         
@@ -83,3 +88,22 @@ class BinaryTree:
             left_expr = self.build_equation(node.left)
             right_expr = self.build_equation(node.right)
             return f"({operation}({left_expr}, {right_expr}))"
+    
+    def mutate_node(self):
+        pass
+        
+    
+    def build_executable_equation(self, X: pd.DataFrame) -> None:
+        substitutions = {}
+        for col in self.variables:
+            substitutions[col] = f"X['{col}'].values"
+
+        executable_equation = self.equation
+        for var in self.variables:
+            if var in substitutions:
+                executable_equation = re.sub(r'\b' + re.escape(var) + r'\b', substitutions[var], executable_equation)
+        self.executable_equation = executable_equation
+
+    def calculate_fitness(self, X: pd.DataFrame, y: pd.Series) -> float:
+        self.build_executable_equation(X)
+        self.fitness = np.mean(np.abs(y.values - eval(self.executable_equation)))

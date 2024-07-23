@@ -21,7 +21,7 @@ binary_operators = ["+", "-", "*", "**", "/"]
 
 population = Population(
     num_individuals=10000,
-    max_individual_depth=10,
+    max_individual_depth=3,
     variables=variables,
     unary_operators=unary_operators,
     binary_operators=binary_operators,
@@ -31,4 +31,9 @@ population = Population(
 population.calculate_fitness(X, y)
 population.sort_by_fitness()
 for individual in population.population:
-    print(individual.fitness)
+    print("PREVIOUS TO MUTATION")
+    individual.print_tree_level_order()
+    individual.mutate_node()
+    print("AFTER MUTATION")
+    individual.print_tree_level_order()
+    print("====================================")

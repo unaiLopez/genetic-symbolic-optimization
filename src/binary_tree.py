@@ -54,8 +54,10 @@ class BinaryTree:
                 node_id = f"unary_operator_and_values_depth_{self.max_depth - depth}_node_{self.index}"
                 node_value = random.choice(self.unary_operators + self.variables)
 
-            if node_value in self.operators:
-                node_type = NodeType.OPERATOR
+            if node_value in self.unary_operators:
+                node_type = NodeType.UNARY_OPERATOR
+            elif node_value in self.binary_operators:
+                node_type = NodeType.BINARY_OPERATOR
             elif node_value == "const":
                 node_type = NodeType.CONSTANT
             else:
@@ -113,24 +115,22 @@ class BinaryTree:
             right_expr = self.build_equation(node.right)
             return f"({operation}({left_expr}, {right_expr}))"
 
-    def _mutate_until_success(self, node_to_mutate: Node, operators: List[str]):
-        continue_mutation = True
-        while(continue_mutation):
-            mutated_node_value = random.choice(operators)
-            if mutated_node_value != node_to_mutate.value:
-                node_to_mutate.value = mutated_node_value
-                continue_mutation = False
-
-    def mutate_node(self):
+    def perform_simple_node_mutation(self) -> None:
         nodes = self.collect_nodes()
 
         node_to_mutate = random.choice(nodes)
-        if node_to_mutate.value in self.unary_operators:
-            self._mutate_until_success(node_to_mutate, self.unary_operators)
-        elif node_to_mutate.value in self.binary_operators:
-            self._mutate_until_success(node_to_mutate, self.binary_operators)
-        elif node_to_mutate.value in self.variables:
-            self._mutate_until_success(node_to_mutate, self.variables)
+        if node_to_mutate.node_type == NodeType.UNARY_OPERATOR:
+            temp_operators = self.unary_operators.copy()
+            temp_operators.remove(node_to_mutate.value)
+        elif node_to_mutate.node_type == NodeType.BINARY_OPERATOR:
+            temp_operators = self.binary_operators.copy()
+            temp_operators.remove(node_to_mutate.value)
+        elif node_to_mutate.node_type == NodeType.VARIABLE:
+            temp_operators = self.variables.copy()
+            temp_operators.remove(node_to_mutate.value)
+
+        mutated_node_value = random.choice(temp_operators)
+        node_to_mutate.value = mutated_node_value
 
     def print_tree_level_order(self):
         if not self.root:
@@ -160,4 +160,10 @@ class BinaryTree:
 
     def calculate_fitness(self, X: pd.DataFrame, y: pd.Series) -> float:
         self.build_executable_equation(X)
-        self.fitness = np.mean(np.abs(y.values - eval(self.executable_equation)))
+
+        fitness = np.mean(np.abs(y.values - eval(self.executable_equation)))
+        if math.isinf(fitness):
+            fitness = np.inf
+        elif math.isnan(fitness):
+            fitness = np.inf
+        self.fitness = fitness

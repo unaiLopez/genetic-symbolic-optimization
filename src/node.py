@@ -2,7 +2,8 @@ from enum import Enum
 from typing import Optional
 
 class NodeType:
-    OPERATOR = "operator"
+    UNARY_OPERATOR = "unary_operator"
+    BINARY_OPERATOR = "binary_operator"
     VARIABLE = "variable"
     CONSTANT = "constant"
 

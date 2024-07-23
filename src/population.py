@@ -1,3 +1,6 @@
+import random
+
+import numpy as np
 import pandas as pd
 
 from typing import List
@@ -12,7 +15,7 @@ class Population:
         unary_operators: List[str],
         binary_operators: List[str],
         prob_node_mutation: float,
-        prob_crossover: float):
+        tournament_size: int):
 
         self.num_individuals = num_individuals
         self.max_individual_depth = max_individual_depth
@@ -20,7 +23,7 @@ class Population:
         self.unary_operators = unary_operators
         self.binary_operators = binary_operators
         self.prob_node_mutation = prob_node_mutation
-        self.prob_crossover = prob_crossover
+        self.tournament_size = tournament_size
 
         self.population = self._initialize_population()
     
@@ -35,14 +38,21 @@ class Population:
             ))
         return population
     
-    def sort_by_fitness(self):
+    def sort_by_fitness(self) -> None:
         self.population.sort(key=lambda individual: individual.fitness, reverse=False)
 
-    def mutate(self):
-        for i in range(len(self.population)):
-            if random.random() <= self.prob_node_mutation:
-                self.population[i].mutate_node()
+    def roulette_wheel_selection(self) -> None:
+        total_fitness = sum(individual.fitness for individual in self.population)
+        print(total_fitness)
+        selection_probs = [individual.fitness / total_fitness for individual in self.population]
+        print(selection_probs)
+        return random.choices(self.population, weights=selection_probs, k=2)
 
+    def perform_simple_node_mutation(self) -> None:
+        for i in range(len(self.population)):
+            if random.random() <= self.prob_simple_node_mutation:
+                self.population[i].perform_simple_node_mutation()
+    
     def calculate_fitness(self, X: pd.DataFrame, y: pd.Series) -> List[BinaryTree]:
         for i in range(len(self.population)):
             self.population[i].calculate_fitness(X, y)

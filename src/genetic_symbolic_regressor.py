@@ -7,7 +7,7 @@ class GeneticSymbolicRegressor:
         #calculate fitness
         #order by fitness
         for epoch in range(epochs):
-            print(f"EPOCH?{epoch + 1}")
+            print(f"EPOCH={epoch + 1}")
             # get N best and do crossover
             # do mutation
             # calculate fitness

@@ -1,15 +1,24 @@
+import io
 import re
 import math
+import uuid
 import random
+import warnings
+import graphviz
 
 import numpy as np
 import pandas as pd
 
+import matplotlib.pyplot as plt
+
 from node import Node
-from typing import List
+from typing import List, Optional
+from PIL import Image
 from operations import *
 from node import NodeType
 from collections import deque
+
+warnings.filterwarnings('ignore', category=RuntimeWarning)
 
 class BinaryTree:
     def __init__(self, max_possible_depth: int, variables: List[str], unary_operators: List[str], binary_operators: List[str]):
@@ -19,17 +28,24 @@ class BinaryTree:
         self.binary_operators = binary_operators
         self.operators = unary_operators + binary_operators
 
-        self.index = 0
-        self.depth = None
         self.fitness = None
-        
+        self.depth = None
+
         self.max_depth = random.randint(1, max_possible_depth)
         self.root = self._build_tree(self.max_depth)
-        self.equation = self.build_equation(self.root)
+        self.executable_equation = None
+        self.nodes = None
+        self.complexity = None
 
-        
+        self.update_tree_info()
 
-    def _build_tree(self, depth: int) -> Node:
+    def _update_nodes(self):
+        self.nodes = self._collect_nodes()
+    
+    def _update_complexity(self):
+        self.complexity = len(self.nodes)
+
+    def _build_tree(self, depth: int, parent: Node = None) -> Node:
         if depth == 1:
             node_value = random.choice(self.variables)
             if node_value == "const":
@@ -37,21 +53,16 @@ class BinaryTree:
             else:
                 node_type = NodeType.VARIABLE
 
-            node_id = f'values_depth_{self.max_depth - depth}_node_{self.index}'
-            self.index += 1
-            self.depth = self.max_possible_depth
-
             return Node(
-                id=node_id,
+                id=uuid.uuid1(),
                 node_type=node_type,
-                value=node_value
+                value=node_value,
+                parent=parent
             )
         else:
             if depth > 2:
-                node_id = f"any_operator_and_values_depth_{self.max_depth - depth}_node_{self.index}"
                 node_value = random.choice(self.operators + self.variables)
             elif depth == 2:
-                node_id = f"unary_operator_and_values_depth_{self.max_depth - depth}_node_{self.index}"
                 node_value = random.choice(self.unary_operators + self.variables)
 
             if node_value in self.unary_operators:
@@ -64,23 +75,28 @@ class BinaryTree:
                 node_type = NodeType.VARIABLE
                  
             node = Node(
-                id=node_id,
+                id=uuid.uuid1(),
                 node_type=node_type,
-                value=node_value
+                value=node_value,
+                parent=parent
             )
-            self.index += 1
 
             if node_value in self.unary_operators:
-                node.right = self._build_tree(depth - 1)
+                node.right = self._build_tree(depth - 1, node)
             elif node_value in self.binary_operators:
-                node.left = self._build_tree(depth - 1)
-                node.right = self._build_tree(depth - 1)
-            else:
-                self.depth = self.max_possible_depth - depth + 1
+                node.left = self._build_tree(depth - 1, node)
+                node.right = self._build_tree(depth - 1, node)
             
             return node
+        
+    def _calculate_max_depth(self, node: Optional[Node]) -> int:
+        if node is None:
+            return 0
+        left_depth = self._calculate_max_depth(node.left)
+        right_depth = self._calculate_max_depth(node.right)
+        return max(left_depth, right_depth) + 1
 
-    def collect_nodes(self):
+    def _collect_nodes(self):
         if not self.root:
             return []
         
@@ -96,10 +112,7 @@ class BinaryTree:
         
         return nodes
 
-    def build_equation(self, node: Node) -> str:
-        if not node:
-            return ""
-        
+    def _build_equation(self, node: Node) -> None:
         if node.value in self.operators:
             operation = str(OPERATIONS[node.value])
         else:
@@ -108,17 +121,15 @@ class BinaryTree:
         if not node.left and not node.right:
             return operation
         elif node.right and not node.left:
-            right_expr = self.build_equation(node.right)
+            right_expr = self._build_equation(node.right)
             return f"({operation}({right_expr}))"
         elif node.left and node.right:
-            left_expr = self.build_equation(node.left)
-            right_expr = self.build_equation(node.right)
+            left_expr = self._build_equation(node.left)
+            right_expr = self._build_equation(node.right)
             return f"({operation}({left_expr}, {right_expr}))"
 
-    def perform_simple_node_mutation(self) -> None:
-        nodes = self.collect_nodes()
-
-        node_to_mutate = random.choice(nodes)
+    def perform_mutation(self) -> None:
+        node_to_mutate = random.choice(self.nodes)
         if node_to_mutate.node_type == NodeType.UNARY_OPERATOR:
             temp_operators = self.unary_operators.copy()
             temp_operators.remove(node_to_mutate.value)
@@ -131,23 +142,8 @@ class BinaryTree:
 
         mutated_node_value = random.choice(temp_operators)
         node_to_mutate.value = mutated_node_value
-
-    def print_tree_level_order(self):
-        if not self.root:
-            return
-        
-        queue = deque([self.root])
-        while queue:
-            node = queue.popleft()
-            print(node.value, end=" ")
-            if node.left:
-                queue.append(node.left)
-            if node.right:
-                queue.append(node.right)
-        print()
-        
     
-    def build_executable_equation(self, X: pd.DataFrame) -> None:
+    def _build_executable_equation(self) -> None:
         substitutions = {}
         for col in self.variables:
             substitutions[col] = f"X['{col}'].values"
@@ -156,14 +152,58 @@ class BinaryTree:
         for var in self.variables:
             if var in substitutions:
                 executable_equation = re.sub(r'\b' + re.escape(var) + r'\b', substitutions[var], executable_equation)
+        
         self.executable_equation = executable_equation
 
-    def calculate_fitness(self, X: pd.DataFrame, y: pd.Series) -> float:
-        self.build_executable_equation(X)
+    def update_tree_info(self) -> None:
+        self._update_nodes()
+        self._update_complexity()
+        self.depth = self._calculate_max_depth(self.root)
+        self.equation = self._build_equation(self.root)
+        self._build_executable_equation()
 
+    def calculate_fitness(self, X: pd.DataFrame, y: pd.Series) -> float:
         fitness = np.mean(np.abs(y.values - eval(self.executable_equation)))
-        if math.isinf(fitness):
+        if math.isinf(fitness) or math.isnan(fitness):
             fitness = np.inf
-        elif math.isnan(fitness):
-            fitness = np.inf
-        self.fitness = fitness
+
+        self.fitness = float(fitness)
+
+    def visualize_binary_tree(self) -> None:
+        graph = graphviz.Digraph()
+        graph.node(name=str(self.root.id), label=str(self.root.value), style="filled", fillcolor="red")
+
+        def add_nodes_edges(node):
+            if node.left:
+                if node.left.value not in list(self.variables) + ["const"]:
+                    left_fill_color = "red"
+                    shape = None
+                else:
+                    left_fill_color = "green"
+                    shape = "rectangle"
+
+                graph.node(name=str(node.left.id), label=str(node.left.value), shape=shape, style="filled", fillcolor=left_fill_color)
+                graph.edge(str(node.id), str(node.left.id))
+                add_nodes_edges(node.left)
+            if node.right:
+                if node.right.value not in list(self.variables) + ["const"]:
+                    right_fill_color = "red"
+                    shape = None
+                else:
+                    right_fill_color = "green"
+                    shape = "rectangle"
+
+                graph.node(name=str(node.right.id), label=str(node.right.value), shape=shape, style="filled", fillcolor=right_fill_color)
+                graph.edge(str(node.id), str(node.right.id))
+                add_nodes_edges(node.right)
+
+        add_nodes_edges(self.root)
+
+        #graph_path = 'equation_tree.png'
+        #graph.render(graph_path, format='png', cleanup=True)
+        graph_data = graph.pipe(format='png')
+        img = Image.open(io.BytesIO(graph_data))
+        plt.figure(figsize=(10, 10))
+        plt.imshow(img)
+        plt.axis('off')
+        plt.show()   

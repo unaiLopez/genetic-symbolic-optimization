@@ -28,7 +28,7 @@ class BinaryTree:
         self.binary_operators = binary_operators
         self.operators = unary_operators + binary_operators
 
-        self.fitness = None
+        self.loss = None
         self.depth = None
 
         self.max_depth = random.randint(1, max_possible_depth)
@@ -162,12 +162,14 @@ class BinaryTree:
         self.equation = self._build_equation(self.root)
         self._build_executable_equation()
 
-    def calculate_fitness(self, X: pd.DataFrame, y: pd.Series) -> float:
-        fitness = np.mean(np.abs(y.values - eval(self.executable_equation)))
-        if math.isinf(fitness) or math.isnan(fitness):
-            fitness = np.inf
-
-        self.fitness = float(fitness)
+    def calculate_loss(self, X: pd.DataFrame, y: pd.Series) -> float:
+        try:
+            loss = np.mean(np.abs(y.values - eval(self.executable_equation)))
+        except:
+            loss = np.inf
+        if math.isinf(loss) or math.isnan(loss):
+            loss = np.inf
+        self.loss = float(loss)
 
     def visualize_binary_tree(self) -> None:
         graph = graphviz.Digraph()

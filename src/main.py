@@ -1,8 +1,44 @@
 import numpy as np
 import pandas as pd
 
-from population import Population
 from operations import *
+from genetic_symbolic_regressor import GeneticSymbolicRegressor
+
+
+def generate_hooks_law_data():
+    k = np.random.uniform(low=1, high=100, size=50)
+    original_length = np.random.uniform(low=1, high=100, size=50)
+    current_length = original_length + np.random.uniform(low=1, high=25, size=50)
+
+    f = k * (current_length - original_length)
+
+
+    X = pd.DataFrame({
+        "k": k,
+        "original_lenght": original_length,
+        "current_length": current_length
+    })
+    y = pd.Series(f)
+
+    return X, y
+
+def generate_newtons_law_data():
+    G = [6.67428e-11] * 50
+    m1 = np.random.randint(low=1e10, high=1e11, size=50)
+    m2 = np.random.randint(low=1e10, high=1e12, size=50)
+    r = np.random.randint(low=1e7, high=1e9, size=50)
+
+    F = G * ((m1 * m2) / (r ** 2))
+
+    X = pd.DataFrame({
+        "G": G,
+        "m1": m1,
+        "m2": m2,
+        "r": r
+    })
+    y = pd.Series(F)
+    
+    return X, y
 
 X = pd.DataFrame({
     "x0": np.random.uniform(low=-1000, high=1000, size=1000),
@@ -10,75 +46,34 @@ X = pd.DataFrame({
 })
 
 y_values = (X["x0"].values**2 - X["x1"].values) / X["x1"].values
-y_values = X["x0"].values**2 - 1
-y_values = (X["x0"].values**2 - 1) / X["x1"].values ** 2
+
+#y_values = X["x0"].values**2 - 1
+#y_values = (X["x0"].values**2 - 1) / X["x1"].values ** 2
 y = pd.Series(y_values)
 
+X, y = generate_hooks_law_data()
+X, y = generate_newtons_law_data()
+print(X)
+print(y)
+
 variables = list(X.columns)
-#unary_operators = ["exp", "Abs", "log", "sin", "cos", "tan", "**0", "**2", "**3", "**-1", "**-2", "**-3"]
-unary_operators = ["exp", "abs", "log", "sin", "cos", "tan", "**0", "**2", "**3", "**-1", "**-2", "**-3"]
+unary_operators = []#["exp", "abs", "log", "sin", "cos", "tan", "**0", "**2", "**3", "**-1", "**-2", "**-3"]
 binary_operators = ["+", "-", "*", "**", "/"]
 
-population = Population(
-    num_individuals_per_epoch=10000,
-    max_individual_depth=15,
+model = GeneticSymbolicRegressor(
+    num_individuals_per_epoch=1000,
+    max_individual_depth=6, #ESTO HAY QUE REVISAR A VECES LA PROFUNDIDAD DEL ARBOLES ES MAYOR. AUNQUE ES POR EL CROSSOVER. AHI REVISAR.
     variables=variables,
     unary_operators=unary_operators,
     binary_operators=binary_operators,
-    prob_node_mutation=0.005,
-    tournament_ratio=0.5,
-    survival_rate=0.7,
-    elitism_rate=0.01
+    prob_node_mutation=0.015,
+    tournament_ratio=0.7,
+    elitism_ratio=0.01,
+    timeout=120,
+    stop_loss=1e-15,
+    max_generations=100,
+    verbose=1,
+    loss_function="mae",    #THIS IS NOT IMPLEMENTED YET
+    random_state=None
 )
-print("CALCULATE FITNESS...")
-population.calculate_fitness(X, y)
-print("SORT BY FITNESS...")
-population.sort_by_fitness()
-
-import time
-
-times_per_epoch = list()
-
-for epoch in range(1, 50):
-    start_time = time.time()
-
-    epoch_fitness_scores = [individual.fitness for individual in population.population]
-    best_individual_index = np.argmin(epoch_fitness_scores)
-    best_individual = population.population[best_individual_index]
-
-    print("\n==============================================================")
-    print(f"BEST INDIVIDUAL FITNESS: {best_individual.fitness}")
-    print(f"BEST INDIVIDUAL TREE DEPTH: {best_individual.depth}")
-    print(f"BEST INDIVIDUAL EQUATION COMPLEXITY: {best_individual.complexity}")
-    print(f"BEST INDIVIDUAL EQUATION: {best_individual.equation}")
-
-    if best_individual.fitness < 1e-6:
-        best_individual.visualize_binary_tree()
-        break
-
-    print(f"EPOCH={epoch}\n")
-    
-
-    print("TOURNAMENT...")
-    population.roulette_wheel_selection()
-    print("CROSSOVER...")
-    population.perform_crossover()
-    print("MUTATION...")
-    population.perform_mutation()
-    print("CALCULATE FITNESS...")
-    population.calculate_fitness(X, y)
-    print("SORT BY FITNESS...")
-    population.sort_by_fitness()
-    print("PREPARE NEXT EPOCH POPULATION...")
-    population.prepare_next_epoch_population()
-    print("CALCULATE FITNESS...")
-    population.calculate_fitness(X, y)
-    print("SORT BY FITNESS...")
-    population.sort_by_fitness()
-    times_per_epoch.append(time.time() - start_time)
-
-
-print(f"MEAN TIME PER EPOCH {np.mean(times_per_epoch)}")
-
-
-
+model.fit(X, y)

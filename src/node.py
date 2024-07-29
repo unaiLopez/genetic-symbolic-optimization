@@ -18,8 +18,6 @@ class Node:
         self.right = right
 
     def parent_side(self):
-        """Returns 'left' if this node is the left child of its parent,
-        'right' if this node is the right child, and None if it has no parent."""
         if self.parent is None:
             return None
         if self.parent.left is self:
@@ -27,3 +25,10 @@ class Node:
         if self.parent.right is self:
             return 'right'
         return None
+    
+    def calculate_max_depth(self) -> int:
+        if self is None:
+            return 0
+        left_depth = self.left.calculate_max_depth() if self.left else 0
+        right_depth = self.right.calculate_max_depth() if self.right else 0
+        return max(left_depth, right_depth) + 1

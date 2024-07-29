@@ -1,0 +1,3 @@
+Multiples poblaciones a la vez
+Implementar más mutaciones (if mutacion then implementar aleatoriamente alguna de todas las opciones)
+Hacer crossover y mutaciones más robustas evitando que se supere el max depth entre otras cosas...

@@ -21,8 +21,8 @@ from collections import deque
 warnings.filterwarnings('ignore', category=RuntimeWarning)
 
 class BinaryTree:
-    def __init__(self, max_possible_depth: int, variables: List[str], unary_operators: List[str], binary_operators: List[str]):
-        self.max_possible_depth = max_possible_depth
+    def __init__(self, max_initialization_depth: int, variables: List[str], unary_operators: List[str], binary_operators: List[str]):
+        self.max_initialization_depth = max_initialization_depth
         self.variables = variables
         self.unary_operators = unary_operators
         self.binary_operators = binary_operators
@@ -31,7 +31,7 @@ class BinaryTree:
         self.loss = None
         self.depth = None
 
-        self.max_depth = random.randint(1, max_possible_depth)
+        self.max_depth = random.randint(1, max_initialization_depth)
         self.root = self._build_tree(self.max_depth)
         self.executable_equation = None
         self.nodes = None
@@ -88,14 +88,7 @@ class BinaryTree:
                 node.right = self._build_tree(depth - 1, node)
             
             return node
-        
-    def _calculate_max_depth(self, node: Optional[Node]) -> int:
-        if node is None:
-            return 0
-        left_depth = self._calculate_max_depth(node.left)
-        right_depth = self._calculate_max_depth(node.right)
-        return max(left_depth, right_depth) + 1
-
+    
     def _collect_nodes(self):
         if not self.root:
             return []
@@ -142,6 +135,43 @@ class BinaryTree:
 
         mutated_node_value = random.choice(temp_operators)
         node_to_mutate.value = mutated_node_value
+
+    def perform_subtree_mutation(self):
+        #TODO
+        """
+        Selection of Mutation Point:
+        Randomly select a node in the binary tree. This node will be the root of the subtree that will be replaced.
+
+        Generation of New Subtree:
+        Generate a new random subtree. This subtree can be generated using the same rules and functions that were used to create the initial population of trees.
+
+        Replacement:
+        Replace the selected node and its subtree with the new randomly generated subtree.
+        """
+        pass
+        
+
+    def perform_node_mutation(self):
+        #TODO
+        """
+        Randomly select a node in the tree and replace its value with another valid value (e.g., replace an operator with another operator or a variable with another variable).
+        """
+        pass
+    
+    def perform_hoist_mutation(self):
+        #TODO
+        """
+        Select a random subtree and replace the entire tree with this subtree, effectively "hoisting" it up to the root.
+        """
+        pass
+
+    def perform_shrink_mutation(self):
+        #TODO
+        """
+        Select a subtree and replace it with one of its subtrees, effectively shrinking the tree.
+        """
+        pass
+    
     
     def _build_executable_equation(self) -> None:
         substitutions = {}
@@ -158,7 +188,7 @@ class BinaryTree:
     def update_tree_info(self) -> None:
         self._update_nodes()
         self._update_complexity()
-        self.depth = self._calculate_max_depth(self.root)
+        self.depth = self.root.calculate_max_depth()
         self.equation = self._build_equation(self.root)
         self._build_executable_equation()
 

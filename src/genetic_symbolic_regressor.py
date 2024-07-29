@@ -1,15 +1,18 @@
 import os
+import sys
 import copy
 import time
 import random
 import logging
 import platform
 
+sys.path.append(os.path.abspath(os.curdir))
+
 import numpy as np
 import pandas as pd
 
-from node import Node
-from binary_tree import BinaryTree
+from src.node import Node
+from src.binary_tree import BinaryTree
 from typing import List, Tuple, Optional, Union
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -51,7 +54,29 @@ class GeneticSymbolicRegressor:
 
         random.seed(random_state)
         np.random.seed(random_state)
-    
+
+        if self.prob_node_mutation < 0.0 or self.prob_node_mutation > 1.0:
+            raise ValueError("Mutation probability should be between 0.0 and 1.0")
+        if self.tournament_ratio < 0.0 or self.tournament_ratio > 1.0:
+            raise ValueError("Tournament ratio should be between 0.0 and 1.0")
+        if self.elitism_ratio < 0.0 or self.elitism_ratio > 1.0:
+            raise ValueError("Elitism ratio should be between 0.0 and 1.0")
+        if (self.elitism_ratio + tournament_ratio) < 0.0 or (self.elitism_ratio + tournament_ratio) > 1.0:
+            raise ValueError("Elitism ratio and tournament ratio combined should be between 0.0 and 1.0")
+        if self.max_generations is not None:
+            if self.max_generations <= 0:
+                raise ValueError("Max generations should be bigger than 0")
+        if self.timeout is not None:
+            if self.timeout < 0.0:
+                raise ValueError("Timeout should be bigger than 0")
+        if self.stop_loss is not None:
+            if self.stop_loss < 0.0:
+                raise ValueError("Stop loss should be bigger than 0")
+
+
+
+
+
     def _create_individuals(self, num_individuals: int) -> List[BinaryTree]:
         individuals = list()
         for _ in range(num_individuals):
@@ -250,6 +275,9 @@ class GeneticSymbolicRegressor:
             return False
     
     def fit(self, X: pd.DataFrame, y: pd.Series):
+        if X.empty or y.empty:
+            raise ValueError(f"X and y shouldn't be empty.")
+        
         start_time = time.time()
 
         individuals = self._create_individuals(self.num_individuals_per_epoch)

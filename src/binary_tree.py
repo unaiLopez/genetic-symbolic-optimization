@@ -1,22 +1,25 @@
 import io
 import re
+import os
+import sys
 import math
 import uuid
 import random
 import warnings
 import graphviz
 
+sys.path.append(os.path.abspath(os.curdir))
+
 import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
 
-from node import Node
-from typing import List, Optional
 from PIL import Image
-from operations import *
-from node import NodeType
+from typing import List
+from src.operations import *
 from collections import deque
+from src.node import Node, NodeType
 
 warnings.filterwarnings('ignore', category=RuntimeWarning)
 
@@ -238,4 +241,4 @@ class BinaryTree:
         plt.figure(figsize=(10, 10))
         plt.imshow(img)
         plt.axis('off')
-        plt.show()   
+        plt.show()

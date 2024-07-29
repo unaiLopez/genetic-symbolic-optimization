@@ -1,8 +1,14 @@
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.curdir))
+print(os.path.abspath(os.curdir))
+
 import numpy as np
 import pandas as pd
 
-from operations import *
-from genetic_symbolic_regressor import GeneticSymbolicRegressor
+from src.operations import *
+from src.genetic_symbolic_regressor import GeneticSymbolicRegressor
 
 
 def generate_hooks_law_data():

@@ -1,6 +1,4 @@
-from enum import Enum
-from collections import deque
-from typing import Optional, List
+from typing import Optional
 
 class NodeType:
     UNARY_OPERATOR = "unary_operator"

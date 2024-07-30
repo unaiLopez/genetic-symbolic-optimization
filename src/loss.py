@@ -1,5 +1,7 @@
 import numpy as np
 
+from typing import Callable
+
 class Loss:
     def __init__(self, loss_type: str):
         self.loss_type = loss_type
@@ -13,7 +15,7 @@ class Loss:
     def _calculate_rmse(self, y: np.array, y_pred: np.array) -> float:
         return np.mean(np.sqrt(np.mean((y - y_pred) ** 2)))
     
-    def get_loss_function(self) -> float:
+    def get_loss_function(self) -> Callable:
         if self.loss_type  == "mae":
             return self._calculate_mae
         elif self.loss_type  == "mse":

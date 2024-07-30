@@ -16,7 +16,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from PIL import Image
-from typing import List
+from typing import List, Callable
 from src.operations import *
 from collections import deque
 from src.node import Node, NodeType
@@ -195,9 +195,9 @@ class BinaryTree:
         self.equation = self._build_equation(self.root)
         self._build_executable_equation()
 
-    def calculate_loss(self, X: pd.DataFrame, y: pd.Series) -> float:
+    def calculate_loss(self, X: pd.DataFrame, y: pd.Series, loss_function: Callable) -> float:
         try:
-            loss = np.mean(np.abs(y.values - eval(self.executable_equation)))
+            loss = loss_function(y.values, eval(self.executable_equation))
         except:
             loss = np.inf
         if math.isinf(loss) or math.isnan(loss):

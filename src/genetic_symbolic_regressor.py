@@ -11,6 +11,7 @@ sys.path.append(os.path.abspath(os.curdir))
 import numpy as np
 import pandas as pd
 
+from src.loss import Loss
 from src.node import Node
 from src.binary_tree import BinaryTree
 from typing import List, Tuple, Optional, Union
@@ -44,7 +45,7 @@ class GeneticSymbolicRegressor:
         self.prob_node_mutation = prob_node_mutation
         self.tournament_ratio = tournament_ratio
         self.elitism_ratio = elitism_ratio
-        self.loss_function = loss_function
+        self.loss_function = Loss(loss_function).get_loss_function()
         self.max_generations = max_generations
         self.timeout = timeout
         self.stop_loss = stop_loss
@@ -72,10 +73,6 @@ class GeneticSymbolicRegressor:
         if self.stop_loss is not None:
             if self.stop_loss < 0.0:
                 raise ValueError("Stop loss should be bigger than 0")
-
-
-
-
 
     def _create_individuals(self, num_individuals: int) -> List[BinaryTree]:
         individuals = list()
@@ -235,7 +232,7 @@ class GeneticSymbolicRegressor:
 
     def _calculate_loss(self, individuals: List[BinaryTree], X: pd.DataFrame, y: pd.Series) -> List[BinaryTree]:
         for i in range(len(individuals)):
-            individuals[i].calculate_loss(X, y)
+            individuals[i].calculate_loss(X, y, self.loss_function)
         return individuals
     
     def _prepare_next_epoch_individual(self, offsprings: List[BinaryTree], elite_individuals: List[BinaryTree]) -> List[BinaryTree]:
@@ -285,8 +282,7 @@ class GeneticSymbolicRegressor:
         individuals = self._sort_by_loss(individuals)
 
         best_individual = individuals[0]
-
-        for generation in range(1, self.max_generations):
+        for generation in range(1, self.max_generations + 1):
             stop_timeout_criteria = self._check_stop_timeout(start_time)
             stop_loss_criteria = self._check_stop_loss(best_individual.loss)
             stop_max_generations_criteria = self._check_max_generations_criteria(generation)
@@ -318,13 +314,14 @@ class GeneticSymbolicRegressor:
                     "generation": generation,
                     "loss": individual.loss,
                     "complexity": individual.complexity,
+                    "tree_depth": individual.depth,
                     "equation": individual.equation
                 })
             
             df_epoch_results = pd.DataFrame(epoch_results)
             df_epoch_results.sort_values(by=["complexity", "loss"], ascending=True, inplace=True)
             df_epoch_results = df_epoch_results.groupby("complexity").first().reset_index()
-            df_epoch_results = df_epoch_results[["best", "generation", "loss", "complexity", "equation"]]
+            df_epoch_results = df_epoch_results[["best", "generation", "loss", "complexity", "tree_depth", "equation"]]
 
             if self.df_results is None:
                 self.df_results = df_epoch_results.copy()
@@ -332,9 +329,14 @@ class GeneticSymbolicRegressor:
                 self.df_results = pd.concat([self.df_results, df_epoch_results], axis=0)
                 self.df_results.sort_values(by=["complexity", "loss"], ascending=True, inplace=True)
                 self.df_results = self.df_results.groupby("complexity").first().reset_index()
-                self.df_results = self.df_results[["best", "generation", "loss", "complexity", "equation"]]
+                self.df_results = self.df_results[["best", "generation", "loss", "complexity", "tree_depth", "equation"]]
                 self.df_results.loc[:, "best"] = ""
-                min_index = self.df_results["loss"].idxmin()
+                if len(self.df_results[self.df_results["loss"] == self.df_results["loss"].min()]) > 1: # ESTO NO SIEMPRE FUNCIONA PORQUE HAY MUCHOS DECIMALES Y NO SON IGUALES
+                    df_min_loss = self.df_results[self.df_results["loss"] == self.df_results["loss"].min()]
+                    df_min_loss = df_min_loss[df_min_loss["complexity"] == df_min_loss["complexity"].min()]
+                    min_index = df_min_loss.index
+                else:
+                    min_index = self.df_results["loss"].idxmin()
                 self.df_results.loc[min_index, "best"] = ">>>"
                 self.df_results.loc[:, "current_generation"] = generation
 

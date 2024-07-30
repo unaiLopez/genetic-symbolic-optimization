@@ -18,7 +18,6 @@ def generate_hooks_law_data():
 
     f = k * (current_length - original_length)
 
-
     X = pd.DataFrame({
         "k": k,
         "original_lenght": original_length,
@@ -66,17 +65,17 @@ unary_operators = ["exp", "abs", "log", "sin", "cos", "tan", "**0", "**2", "**3"
 binary_operators = ["+", "-", "*", "**", "/"]
 
 model = GeneticSymbolicRegressor(
-    num_individuals_per_epoch=1000,
-    max_initialization_individual_depth=4, #ESTO HAY QUE REVISAR A VECES LA PROFUNDIDAD DEL ARBOL ES MAYOR. AUNQUE ES POR EL CROSSOVER. AÑADIR RESTRICCIONES.
+    num_individuals_per_epoch=250,
+    max_initialization_individual_depth=5, #ESTO HAY QUE REVISAR A VECES LA PROFUNDIDAD DEL ARBOL ES MAYOR. AUNQUE ES POR EL CROSSOVER. AÑADIR RESTRICCIONES.
     variables=variables,
     unary_operators=unary_operators,
     binary_operators=binary_operators,
-    prob_node_mutation=0.02,
+    prob_node_mutation=0.05,
     tournament_ratio=0.75,
     elitism_ratio=0.01,
     timeout=600,
     stop_loss=1e-6,
-    max_generations=1000,
+    max_generations=2500,
     verbose=1,
     loss_function="mae",    #THIS IS NOT IMPLEMENTED YET
     random_state=None

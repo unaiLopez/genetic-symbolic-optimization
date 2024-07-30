@@ -28,6 +28,7 @@ class GeneticSymbolicRegressor:
         unary_operators: List[str],
         binary_operators: List[str],
         prob_node_mutation: float,
+        prob_crossover: float,
         tournament_ratio: float,
         elitism_ratio: float,
         timeout: Optional[int],
@@ -43,9 +44,10 @@ class GeneticSymbolicRegressor:
         self.unary_operators = unary_operators
         self.binary_operators = binary_operators
         self.prob_node_mutation = prob_node_mutation
+        self.prob_crossover = prob_crossover
         self.tournament_ratio = tournament_ratio
         self.elitism_ratio = elitism_ratio
-        self.loss_function = Loss(loss_function).get_loss_function()
+        self.loss_function = Loss().get_loss_function(loss_function)
         self.max_generations = max_generations
         self.timeout = timeout
         self.stop_loss = stop_loss
@@ -88,17 +90,26 @@ class GeneticSymbolicRegressor:
     def _sort_by_loss(self, individuals: List[BinaryTree]) -> None:
         individuals.sort(key=lambda individual: individual.loss, reverse=False)
         return individuals
-    
-    def _perform_selection(self, individuals, k: int = 2) -> List[Tuple[BinaryTree, BinaryTree]]:
+
+    def _perform_tournament_selection(self, individuals, k: int = 2) -> List[Tuple[BinaryTree, BinaryTree]]:
+        parents = list()
+        continue_tournament = True
         num_individuals_in_tournament = int(
             ((len(individuals) * self.tournament_ratio) - (len(individuals) * self.tournament_ratio) % k) / k
         )
         individuals_to_select = [individual for individual in individuals if individual.loss is not np.inf]
-        inverted_loss = [1.0 / individual.loss if individual.loss != 0 else float(np.inf) for individual in individuals_to_select]
-        total_inverted_loss = sum(inverted_loss)
-        selection_probs = [loss / total_inverted_loss for loss in inverted_loss]
-
-        return [tuple(random.choices(individuals_to_select, weights=selection_probs, k=k)) for _ in range(num_individuals_in_tournament)]
+        i = 0
+        while continue_tournament:
+            if random.random() < self.prob_crossover:
+                parents.append(individuals_to_select[i])
+                individuals_to_select.pop(i)
+                i = 0
+                if len(parents) == num_individuals_in_tournament:
+                    continue_tournament = False
+            else:
+                i += 1
+        
+        return parents
 
     def _depth_within_limits_after_crossover(self, parent: BinaryTree, parent_subtree_parent, parent_to_cross: Node, side: str):
         if side == "left":
@@ -298,8 +309,10 @@ class GeneticSymbolicRegressor:
                 break
 
             elite_individuals = self._perform_elitism(individuals)
-            parents = self._perform_selection(individuals)
-            offsprings = self._perform_crossover(parents)
+            parents1 = self._perform_tournament_selection(individuals)
+            parents2 = self._perform_tournament_selection(individuals)
+
+            offsprings = self._perform_crossover(zip(parents1, parents2))
             offsprings = self._perform_mutation(offsprings)
             individuals = self._prepare_next_epoch_individual(offsprings, elite_individuals)
             individuals = self._calculate_loss(individuals, X, y)

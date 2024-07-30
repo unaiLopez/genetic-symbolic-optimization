@@ -6,11 +6,13 @@ Revisar el perform selection y el tournament
 Arreglo de el best siempre tiene que ser el que menos loss tiene y ademas menos complexity
 Convertir formulas en numpy a sympy
 Añadir constantes con optimizacion de constantes (scipy)
-Implementar losses (mae, rmse, mse, etc)
+Implementar losses (mae, rmse, mse, etc) -> DONE
 
 Añadir features de visualizacion de optimizacion
     - Eje X Loss y eje Y complexity
     - 1 Dataframe por cada generacion
     - Tener 1 dataframe con el mejor invididuo por complexity
+    - Visualizar evolucion (best_loss, worst_loss and mean_loss)
 
+Implementar operadores min, max, mean (esto podria ser interesante para el ML)
 Implementar benchmarks.py -> Con esto podremos ir evaluando si los cambios ayudan a mejorar o no (mirar benchmarks de PySr)

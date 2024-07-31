@@ -14,6 +14,7 @@ import pandas as pd
 from src.loss import Loss
 from src.node import Node
 from src.binary_tree import BinaryTree
+from src.search_results import SearchResults
 from typing import List, Tuple, Optional, Union
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -52,7 +53,7 @@ class GeneticSymbolicRegressor:
         self.timeout = timeout
         self.stop_loss = stop_loss
         self.verbose = verbose
-
+        self.search_results = SearchResults()
         self.df_results = None
 
         random.seed(random_state)
@@ -275,7 +276,7 @@ class GeneticSymbolicRegressor:
     
     def _check_max_generations_criteria(self, generation: int) -> bool:
         if self.max_generations != None:
-            if generation >= self.max_generations - 1:
+            if generation >= self.max_generations + 1:
                 return True
             else:
                 return False
@@ -291,6 +292,8 @@ class GeneticSymbolicRegressor:
         individuals = self._create_individuals(self.num_individuals_per_epoch)
         individuals = self._calculate_loss(individuals, X, y)
         individuals = self._sort_by_loss(individuals)
+        self.search_results.add_best_individuals_by_loss_and_complexity(individuals, 0)
+        self.search_results.visualize_best_in_generation()
 
         best_individual = individuals[0]
         for generation in range(1, self.max_generations + 1):
@@ -318,49 +321,7 @@ class GeneticSymbolicRegressor:
             individuals = self._calculate_loss(individuals, X, y)
             individuals = self._sort_by_loss(individuals)
 
-            best_individual = individuals[0]
+            self.search_results.add_best_individuals_by_loss_and_complexity(individuals, generation)
+            self.search_results.visualize_best_in_generation()
 
-            epoch_results = []
-            for individual in individuals:
-                epoch_results.append({
-                    "best": "",
-                    "generation": generation,
-                    "loss": individual.loss,
-                    "complexity": individual.complexity,
-                    "tree_depth": individual.depth,
-                    "equation": individual.equation
-                })
-            
-            df_epoch_results = pd.DataFrame(epoch_results)
-            df_epoch_results.sort_values(by=["complexity", "loss"], ascending=True, inplace=True)
-            df_epoch_results = df_epoch_results.groupby("complexity").first().reset_index()
-            df_epoch_results = df_epoch_results[["best", "generation", "loss", "complexity", "tree_depth", "equation"]]
-
-            if self.df_results is None:
-                self.df_results = df_epoch_results.copy()
-            else:
-                self.df_results = pd.concat([self.df_results, df_epoch_results], axis=0)
-                self.df_results.sort_values(by=["complexity", "loss"], ascending=True, inplace=True)
-                self.df_results = self.df_results.groupby("complexity").first().reset_index()
-                self.df_results = self.df_results[["best", "generation", "loss", "complexity", "tree_depth", "equation"]]
-                self.df_results.loc[:, "best"] = ""
-                if len(self.df_results[self.df_results["loss"] == self.df_results["loss"].min()]) > 1: # ESTO NO SIEMPRE FUNCIONA PORQUE HAY MUCHOS DECIMALES Y NO SON IGUALES
-                    df_min_loss = self.df_results[self.df_results["loss"] == self.df_results["loss"].min()]
-                    df_min_loss = df_min_loss[df_min_loss["complexity"] == df_min_loss["complexity"].min()]
-                    min_index = df_min_loss.index
-                else:
-                    min_index = self.df_results["loss"].idxmin()
-                self.df_results.loc[min_index, "best"] = ">>>"
-                self.df_results.loc[:, "current_generation"] = generation
-
-            
-            if platform.system() == "Windows":
-                os.system("cls")
-            else:
-                os.system("clear")
-            print(self.df_results)
-            
-
-
-            
-            
+        self.search_results.plot_evolution_per_complexity()

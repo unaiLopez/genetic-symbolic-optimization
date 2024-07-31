@@ -32,6 +32,7 @@ class BinaryTree:
         self.operators = unary_operators + binary_operators
 
         self.loss = None
+        self.score = None
         self.depth = None
 
         self.max_depth = random.randint(1, max_initialization_depth)
@@ -195,7 +196,7 @@ class BinaryTree:
         self.equation = self._build_equation(self.root)
         self._build_executable_equation()
 
-    def calculate_loss(self, X: pd.DataFrame, y: pd.Series, loss_function: Callable) -> float:
+    def calculate_loss(self, X: pd.DataFrame, y: pd.Series, loss_function: Callable) -> None:
         try:
             loss = loss_function(y.values, eval(self.executable_equation))
         except:
@@ -203,6 +204,15 @@ class BinaryTree:
         if math.isinf(loss) or math.isnan(loss):
             loss = np.inf
         self.loss = float(loss)
+    
+    def calculate_score(self, X: pd.DataFrame, y: pd.Series, score_function: Callable) -> None:
+        try:
+            score = score_function(y.values, eval(self.executable_equation))
+        except:
+            score = np.inf
+        if math.isinf(score) or math.isnan(score):
+            score = 0
+        self.score = float(score)
 
     def visualize_binary_tree(self) -> None:
         graph = graphviz.Digraph()

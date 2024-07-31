@@ -57,11 +57,11 @@ y_values = (X["x0"].values**2 - X["x1"].values) / X["x1"].values
 y_values = (X["x0"].values**2 - 1) / X["x1"].values ** 2
 y = pd.Series(y_values)
 
-#X, y = generate_hooks_law_data()
+X, y = generate_hooks_law_data()
 #X, y = generate_newtons_law_data()
 
 variables = list(X.columns)
-unary_operators = ["exp", "abs", "log", "sin", "cos", "tan", "**0", "**2", "**3", "**-1", "**-2", "**-3"]   #CUANDO SOLO HAY UN OPERADOR FALLA LA MUTACION
+unary_operators = []#["exp", "abs", "log", "sin", "cos", "tan", "**0", "**2", "**3", "**-1", "**-2", "**-3"]   #CUANDO SOLO HAY UN OPERADOR FALLA LA MUTACION
 binary_operators = ["+", "-", "*", "**", "/"]
 
 model = GeneticSymbolicRegressor(
@@ -75,7 +75,7 @@ model = GeneticSymbolicRegressor(
     tournament_ratio=0.7,
     elitism_ratio=0.01,
     timeout=600,
-    stop_loss=1e-6,
+    stop_score=0.99,
     max_generations=100,
     verbose=1,
     loss_function="mse",

@@ -4,7 +4,6 @@ import copy
 import time
 import random
 import logging
-import platform
 
 sys.path.append(os.path.abspath(os.curdir))
 
@@ -13,6 +12,7 @@ import pandas as pd
 
 from src.loss import Loss
 from src.node import Node
+from src.score import Score
 from src.binary_tree import BinaryTree
 from src.search_results import SearchResults
 from typing import List, Tuple, Optional, Union
@@ -33,10 +33,11 @@ class GeneticSymbolicRegressor:
         tournament_ratio: float,
         elitism_ratio: float,
         timeout: Optional[int],
-        stop_loss: Optional[float],
+        stop_score: Optional[float],
         max_generations: Optional[int] = 50,
         verbose: Optional[int] = 1,
         loss_function: Optional[str] = "mae",
+        score_function: Optional[str] = "r2",
         random_state: Optional[int] = None):
 
         self.num_individuals_per_epoch = num_individuals_per_epoch
@@ -49,9 +50,10 @@ class GeneticSymbolicRegressor:
         self.tournament_ratio = tournament_ratio
         self.elitism_ratio = elitism_ratio
         self.loss_function = Loss().get_loss_function(loss_function)
+        self.score_function = Score().get_score_function(score_function)
         self.max_generations = max_generations
         self.timeout = timeout
-        self.stop_loss = stop_loss
+        self.stop_score = stop_score
         self.verbose = verbose
         self.search_results = SearchResults()
         self.df_results = None
@@ -73,9 +75,9 @@ class GeneticSymbolicRegressor:
         if self.timeout is not None:
             if self.timeout < 0.0:
                 raise ValueError("Timeout should be bigger than 0")
-        if self.stop_loss is not None:
-            if self.stop_loss < 0.0:
-                raise ValueError("Stop loss should be bigger than 0")
+        if self.stop_score is not None:
+            if self.stop_score < -1.0 or self.stop_score > 1.0:
+                raise ValueError("Stop score should be between -1.0 and 1.0")
 
     def _create_individuals(self, num_individuals: int) -> List[BinaryTree]:
         individuals = list()
@@ -245,8 +247,14 @@ class GeneticSymbolicRegressor:
     def _calculate_loss(self, individuals: List[BinaryTree], X: pd.DataFrame, y: pd.Series) -> List[BinaryTree]:
         for i in range(len(individuals)):
             individuals[i].calculate_loss(X, y, self.loss_function)
+
         return individuals
-    
+
+    def _calculate_score(self, individuals: List[BinaryTree], X: pd.DataFrame, y: pd.Series) -> List[BinaryTree]:
+        for i in range(len(individuals)):
+            individuals[i].calculate_score(X, y, self.score_function)
+
+        return individuals
     def _prepare_next_epoch_individual(self, offsprings: List[BinaryTree], elite_individuals: List[BinaryTree]) -> List[BinaryTree]:
         new_individuals = self._create_individuals(self.num_individuals_per_epoch - len(offsprings) - len(elite_individuals))
         return (
@@ -265,9 +273,9 @@ class GeneticSymbolicRegressor:
         else:
             return False
     
-    def _check_stop_loss(self, best_loss: Union[float, int]) -> bool:
-        if self.stop_loss != None:
-            if self.stop_loss >= best_loss:
+    def _check_stop_score(self, best_score: Union[float, int]) -> bool:
+        if self.stop_score != None:
+            if self.stop_score <= best_score:
                 return True
             else:
                 return False
@@ -291,23 +299,25 @@ class GeneticSymbolicRegressor:
 
         individuals = self._create_individuals(self.num_individuals_per_epoch)
         individuals = self._calculate_loss(individuals, X, y)
+        individuals = self._calculate_score(individuals, X, y)
         individuals = self._sort_by_loss(individuals)
         self.search_results.add_best_individuals_by_loss_and_complexity(individuals, 0)
+        #self.search_results.extract_summary_statistics_from_individuals(individuals, 0)
         self.search_results.visualize_best_in_generation()
 
         best_individual = individuals[0]
         for generation in range(1, self.max_generations + 1):
             stop_timeout_criteria = self._check_stop_timeout(start_time)
-            stop_loss_criteria = self._check_stop_loss(best_individual.loss)
+            stop_score_criteria = self._check_stop_score(best_individual.score)
             stop_max_generations_criteria = self._check_max_generations_criteria(generation)
             if self.verbose >= 1:
                 if stop_timeout_criteria:
                     logger.info('TIMEOUT STOP CRITERIA SATISFIED.')
-                if stop_loss_criteria:
-                    logger.info('LOSS STOP CRITERIA SATISFIED.')
+                if stop_score_criteria:
+                    logger.info('SCORE STOP CRITERIA SATISFIED.')
                 if stop_max_generations_criteria:
                     logger.info('NUM GENERATIONS CRITERIA SATISFIED.')
-            if stop_timeout_criteria or stop_loss_criteria or stop_max_generations_criteria:
+            if stop_timeout_criteria or stop_score_criteria or stop_max_generations_criteria:
                 if self.verbose >= 1: logger.info('STOPPING OPTIMIZATION...')
                 break
 
@@ -319,9 +329,13 @@ class GeneticSymbolicRegressor:
             offsprings = self._perform_mutation(offsprings)
             individuals = self._prepare_next_epoch_individual(offsprings, elite_individuals)
             individuals = self._calculate_loss(individuals, X, y)
+            individuals = self._calculate_score(individuals, X, y)
             individuals = self._sort_by_loss(individuals)
+            best_individual = individuals[0]
 
             self.search_results.add_best_individuals_by_loss_and_complexity(individuals, generation)
+            #self.search_results.extract_summary_statistics_from_individuals(individuals, generation)
             self.search_results.visualize_best_in_generation()
 
-        self.search_results.plot_evolution_per_complexity()
+        #self.search_results.plot_evolution_per_complexity()
+        #self.search_results.plot_evolution()

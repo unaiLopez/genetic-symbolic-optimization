@@ -36,8 +36,8 @@ class GeneticSymbolicRegressor:
         stop_score: Optional[float],
         max_generations: Optional[int] = 50,
         verbose: Optional[int] = 1,
-        loss_function: Optional[str] = "mae",
-        score_function: Optional[str] = "r2",
+        loss_name: Optional[str] = "mae",
+        score_name: Optional[str] = "r2",
         random_state: Optional[int] = None):
 
         self.num_individuals_per_epoch = num_individuals_per_epoch
@@ -49,8 +49,10 @@ class GeneticSymbolicRegressor:
         self.prob_crossover = prob_crossover
         self.tournament_ratio = tournament_ratio
         self.elitism_ratio = elitism_ratio
-        self.loss_function = Loss().get_loss_function(loss_function)
-        self.score_function = Score().get_score_function(score_function)
+        self.loss_name = loss_name
+        self.score_name = score_name
+        self.loss_function = Loss().get_loss_function(loss_name)
+        self.score_function = Score().get_score_function(score_name)
         self.max_generations = max_generations
         self.timeout = timeout
         self.stop_score = stop_score
@@ -107,10 +109,14 @@ class GeneticSymbolicRegressor:
                 parents.append(individuals_to_select[i])
                 individuals_to_select.pop(i)
                 i = 0
-                if len(parents) == num_individuals_in_tournament:
-                    continue_tournament = False
             else:
-                i += 1
+                if i == num_individuals_in_tournament - 1:
+                    i = 0
+                else:
+                    i += 1
+            
+            if len(parents) == num_individuals_in_tournament:
+                continue_tournament = False
         
         return parents
 

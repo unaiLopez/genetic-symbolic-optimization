@@ -9,10 +9,10 @@ Añadir constantes con optimizacion de constantes (scipy)
 Implementar losses (mae, rmse, mse, etc) -> DONE
 
 Añadir features de visualizacion de optimizacion
-    - Eje X Loss y eje Y complexity
-    - 1 Dataframe por cada generacion
-    - Tener 1 dataframe con el mejor invididuo por complexity
-    - Visualizar evolucion (best_loss, worst_loss and mean_loss)
+    - Eje X Loss y eje Y complexity -> DONE
+    - 1 Dataframe por cada generacion -> DONE
+    - Tener 1 dataframe con el mejor individuo por complexity -> DONE
+    - Visualizar evolucion (best_loss, worst_loss and mean_loss) -> DONE
 
 Implementar operadores min, max, mean (esto podria ser interesante para el ML)
 Implementar benchmarks.py -> Con esto podremos ir evaluando si los cambios ayudan a mejorar o no (mirar benchmarks de PySr)

@@ -52,7 +52,7 @@ class SearchResults:
             self.best_by_loss_complexity.loc[min_index, "best"] = ">>>"
             self.best_by_loss_complexity.loc[:, "current_generation"] = generation
         
-        self.best_by_loss_complexity_per_epoch.append(self.best_by_loss_complexity)
+        #self.best_by_loss_complexity_per_epoch.append(self.best_by_loss_complexity)
 
     def visualize_best_in_generation(self):
         if platform.system() == "Windows":

@@ -61,24 +61,25 @@ X, y = generate_hooks_law_data()
 #X, y = generate_newtons_law_data()
 
 variables = list(X.columns)
-unary_operators = []#["exp", "abs", "log", "sin", "cos", "tan", "**0", "**2", "**3", "**-1", "**-2", "**-3"]   #CUANDO SOLO HAY UN OPERADOR FALLA LA MUTACION
+unary_operators = ["exp", "abs", "log", "sin", "cos", "tan", "**0", "**2", "**3", "**-1", "**-2", "**-3"]   #CUANDO SOLO HAY UN OPERADOR FALLA LA MUTACION
 binary_operators = ["+", "-", "*", "**", "/"]
 
 model = GeneticSymbolicRegressor(
-    num_individuals_per_epoch=500,  #EL TOURNAMENT FALLA CUANDO LA CANTIDAD DE INDIVIDUOS ES BAJA. A VECES NO SE ELIGE NINGUN INDIVIDIO
+    num_individuals_per_epoch=100,  #EL TOURNAMENT FALLA CUANDO LA CANTIDAD DE INDIVIDUOS ES BAJA. A VECES NO SE ELIGE NINGUN INDIVIDIO
     max_initialization_individual_depth=4, #ESTO HAY QUE REVISAR A VECES LA PROFUNDIDAD DEL ARBOL ES MAYOR. AUNQUE ES POR EL CROSSOVER. AÑADIR RESTRICCIONES.
     variables=variables,
     unary_operators=unary_operators,
     binary_operators=binary_operators,
-    prob_node_mutation=0.05,
+    prob_node_mutation=0.1,
     prob_crossover=0.066,
     tournament_ratio=0.7,
     elitism_ratio=0.01,
     timeout=600,
     stop_score=0.99,
-    max_generations=100,
+    max_generations=9999,
     verbose=1,
-    loss_function="mse",
+    loss_name="mse",
+    score_name="r2",
     random_state=None
 )
 model.fit(X, y)

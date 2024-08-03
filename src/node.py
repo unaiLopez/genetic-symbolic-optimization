@@ -1,4 +1,5 @@
 from typing import Optional
+import numpy as np
 
 class NodeType:
     UNARY_OPERATOR = "unary_operator"
@@ -7,13 +8,13 @@ class NodeType:
     CONSTANT = "constant"
 
 class Node:
-    def __init__(self, id: str, node_type: NodeType, value: str, parent: Optional["Node"], left: Optional["Node"] = None, right: Optional["Node"] = None):
+    def __init__(self, id, value, node_type, parent: Optional["Node"], left: Optional["Node"] = None, right: Optional["Node"] = None):
         self.id = id
-        self.node_type = node_type 
         self.value = value
-        self.parent = parent
+        self.node_type = node_type
         self.left = left
         self.right = right
+        self.parent = parent
 
     def parent_side(self):
         if self.parent is None:

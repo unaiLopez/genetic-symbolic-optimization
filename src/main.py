@@ -2,7 +2,6 @@ import os
 import sys
 
 sys.path.append(os.path.abspath(os.curdir))
-print(os.path.abspath(os.curdir))
 
 import numpy as np
 import pandas as pd
@@ -23,9 +22,8 @@ def generate_hooks_law_data():
         "original_lenght": original_length,
         "current_length": current_length
     })
-    y = pd.Series(f)
 
-    return X, y
+    return list(X.columns), X.to_numpy(), f
 
 def generate_newtons_law_data():
     planets = ["Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]
@@ -42,41 +40,38 @@ def generate_newtons_law_data():
         "M_sun": M_sun,
         "r_distance_from_sun": r_distance_from_sun
     })
-    y = pd.Series(F)
     
-    return X, y
+    return list(X.columns), X.to_numpy(), F
 
 X = pd.DataFrame({
     "x0": np.random.uniform(low=-1000, high=1000, size=1000),
     "x1": np.random.uniform(low=-1000, high=1000, size=1000)
 })
 
-y_values = (X["x0"].values**2 - X["x1"].values) / X["x1"].values
-
+#y_values = (X["x0"].values**2 - X["x1"].values) / X["x1"].values
 #y_values = X["x0"].values**2 - 1
-y_values = (X["x0"].values**2 - 1) / X["x1"].values ** 2
-y = pd.Series(y_values)
+#y_values = (X["x0"].values**2 - 1) / X["x1"].values ** 2
+#y = pd.Series(y_values)
 
-X, y = generate_hooks_law_data()
-#X, y = generate_newtons_law_data()
+variables, X, y = generate_hooks_law_data()
+#variables, X, y = generate_newtons_law_data()
 
-variables = list(X.columns)
 unary_operators = ["exp", "abs", "log", "sin", "cos", "tan", "**0", "**2", "**3", "**-1", "**-2", "**-3"]   #CUANDO SOLO HAY UN OPERADOR FALLA LA MUTACION
 binary_operators = ["+", "-", "*", "**", "/"]
 
 model = GeneticSymbolicRegressor(
-    num_individuals_per_epoch=100,  #EL TOURNAMENT FALLA CUANDO LA CANTIDAD DE INDIVIDUOS ES BAJA. A VECES NO SE ELIGE NINGUN INDIVIDIO
-    max_initialization_individual_depth=4, #ESTO HAY QUE REVISAR A VECES LA PROFUNDIDAD DEL ARBOL ES MAYOR. AUNQUE ES POR EL CROSSOVER. AÑADIR RESTRICCIONES.
+    num_individuals_per_epoch=350,
+    max_initialization_individual_depth=4, #HAY QUE REVISAR QUE LA DEPTH NUNCA SEA SUPERIOR A ESTA
     variables=variables,
     unary_operators=unary_operators,
     binary_operators=binary_operators,
-    prob_node_mutation=0.1,
-    prob_crossover=0.066,
+    prob_node_mutation=0.2,
+    prob_crossover=0.1,
     tournament_ratio=0.7,
     elitism_ratio=0.01,
     timeout=600,
     stop_score=0.99,
-    max_generations=9999,
+    max_generations=99999,
     verbose=1,
     loss_name="mse",
     score_name="r2",

@@ -10,6 +10,7 @@ sys.path.append(os.path.abspath(os.curdir))
 import numpy as np
 import pandas as pd
 
+from numba import jit
 from src.loss import Loss
 from src.node import Node
 from src.score import Score
@@ -63,6 +64,8 @@ class GeneticSymbolicRegressor:
         random.seed(random_state)
         np.random.seed(random_state)
 
+        if not isinstance(self.variables, list):
+            raise TypeError("Variables should be of type List[str]")
         if self.prob_node_mutation < 0.0 or self.prob_node_mutation > 1.0:
             raise ValueError("Mutation probability should be between 0.0 and 1.0")
         if self.tournament_ratio < 0.0 or self.tournament_ratio > 1.0:
@@ -98,25 +101,23 @@ class GeneticSymbolicRegressor:
 
     def _perform_tournament_selection(self, individuals, k: int = 2) -> List[Tuple[BinaryTree, BinaryTree]]:
         parents = list()
-        continue_tournament = True
         num_individuals_in_tournament = int(
             ((len(individuals) * self.tournament_ratio) - (len(individuals) * self.tournament_ratio) % k) / k
         )
         individuals_to_select = [individual for individual in individuals if individual.loss is not np.inf]
         i = 0
-        while continue_tournament:
+        while True:
             if random.random() < self.prob_crossover:
                 parents.append(individuals_to_select[i])
                 individuals_to_select.pop(i)
                 i = 0
             else:
-                if i == num_individuals_in_tournament - 1:
+                if i == len(individuals_to_select) - 1:
                     i = 0
                 else:
                     i += 1
-            
             if len(parents) == num_individuals_in_tournament:
-                continue_tournament = False
+                break
         
         return parents
 
@@ -250,17 +251,18 @@ class GeneticSymbolicRegressor:
         elite_individuals = individuals[:num_elite_individuals]
         return [copy.deepcopy(individual) for individual in elite_individuals]
 
-    def _calculate_loss(self, individuals: List[BinaryTree], X: pd.DataFrame, y: pd.Series) -> List[BinaryTree]:
+    def _calculate_loss(self, individuals: List[BinaryTree], X: np.ndarray, y: np.ndarray) -> List[BinaryTree]:
         for i in range(len(individuals)):
             individuals[i].calculate_loss(X, y, self.loss_function)
 
         return individuals
 
-    def _calculate_score(self, individuals: List[BinaryTree], X: pd.DataFrame, y: pd.Series) -> List[BinaryTree]:
+    def _calculate_score(self, individuals: List[BinaryTree], X: np.ndarray, y: np.ndarray) -> List[BinaryTree]:
         for i in range(len(individuals)):
             individuals[i].calculate_score(X, y, self.score_function)
 
         return individuals
+    
     def _prepare_next_epoch_individual(self, offsprings: List[BinaryTree], elite_individuals: List[BinaryTree]) -> List[BinaryTree]:
         new_individuals = self._create_individuals(self.num_individuals_per_epoch - len(offsprings) - len(elite_individuals))
         return (
@@ -297,8 +299,8 @@ class GeneticSymbolicRegressor:
         else:
             return False
     
-    def fit(self, X: pd.DataFrame, y: pd.Series):
-        if X.empty or y.empty:
+    def fit(self, X: np.ndarray, y: np.ndarray):
+        if X.size == 0 or y.size == 0:
             raise ValueError(f"X and y shouldn't be empty.")
         
         start_time = time.time()

@@ -15,6 +15,7 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 
+from numba import jit
 from PIL import Image
 from typing import List, Callable
 from src.operations import *
@@ -50,6 +51,9 @@ class BinaryTree:
         self.complexity = len(self.nodes)
 
     def _build_tree(self, depth: int, parent: Node = None) -> Node:
+        if depth < 1:
+            raise ValueError("Depth must be at least 1")
+
         if depth == 1:
             node_value = random.choice(self.variables)
             if node_value == "const":
@@ -90,9 +94,9 @@ class BinaryTree:
             elif node_value in self.binary_operators:
                 node.left = self._build_tree(depth - 1, node)
                 node.right = self._build_tree(depth - 1, node)
-            
+        
             return node
-    
+
     def _collect_nodes(self):
         if not self.root:
             return []
@@ -108,6 +112,9 @@ class BinaryTree:
                 queue.append(node.right)
         
         return nodes
+
+    def evaluate(self, X: np.ndarray) -> float:
+        return self.root.evaluate(X)
 
     def _build_equation(self, node: Node) -> None:
         if node.value in self.operators:
@@ -175,12 +182,11 @@ class BinaryTree:
         Select a subtree and replace it with one of its subtrees, effectively shrinking the tree.
         """
         pass
-    
-    
+
     def _build_executable_equation(self) -> None:
         substitutions = {}
-        for col in self.variables:
-            substitutions[col] = f"X['{col}'].values"
+        for i, col in enumerate(self.variables):
+            substitutions[col] = f"X[:, {i}]"
 
         executable_equation = self.equation
         for var in self.variables:
@@ -196,18 +202,18 @@ class BinaryTree:
         self.equation = self._build_equation(self.root)
         self._build_executable_equation()
 
-    def calculate_loss(self, X: pd.DataFrame, y: pd.Series, loss_function: Callable) -> None:
+    def calculate_loss(self, X: np.ndarray, y: np.ndarray, loss_function: Callable) -> None:
         try:
-            loss = loss_function(y.values, eval(self.executable_equation))
+            loss = loss_function(y, eval(self.executable_equation))
         except:
             loss = np.inf
         if math.isinf(loss) or math.isnan(loss):
             loss = np.inf
         self.loss = float(loss)
     
-    def calculate_score(self, X: pd.DataFrame, y: pd.Series, score_function: Callable) -> None:
+    def calculate_score(self, X: np.ndarray, y: np.ndarray, score_function: Callable) -> None:
         try:
-            score = score_function(y.values, eval(self.executable_equation))
+            score = score_function(y, eval(self.executable_equation))
         except:
             score = np.inf
         if math.isinf(score) or math.isnan(score):

@@ -2,18 +2,16 @@ import numpy as np
 
 from typing import Callable
 
-class Score:
-    def _calculate_r2(self, y: np.array, y_pred: np.array) -> float:
-        y_mean = np.mean(y)
-        ss_res = np.sum((y - y_pred) ** 2)
-        ss_tot = np.sum((y - y_mean) ** 2)
-        r2 = 1 - (ss_res / ss_tot)
+def calculate_r2(y: np.ndarray, y_pred: np.ndarray) -> float:
+    y_mean = np.mean(y)
+    ss_res = np.sum((y - y_pred) ** 2)
+    ss_tot = np.sum((y - y_mean) ** 2)
+    r2 = 1 - (ss_res / ss_tot)
 
-        return r2
-    
-    def get_score_function(self, score_type: str) -> Callable:
-        if score_type  == "r2":
-            return self._calculate_r2
-        else:
-            raise NotImplementedError(f"Score function {self.score_type} is not implemented...")
-    
+    return r2
+
+def get_score_function(score_type: str) -> Callable:
+    if score_type  == "r2":
+        return calculate_r2
+    else:
+        raise NotImplementedError(f"Score function {score_type} is not implemented...")

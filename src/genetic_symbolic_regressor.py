@@ -1,6 +1,5 @@
 import os
 import sys
-import copy
 import time
 import random
 import logging
@@ -11,12 +10,13 @@ import numpy as np
 import pandas as pd
 
 from numba import jit
-from src.loss import Loss
-from src.node import Node
-from src.score import Score
-from src.binary_tree import BinaryTree
-from src.search_results import SearchResults
 from typing import List, Tuple, Optional, Union
+
+from src.loss import get_loss_function
+from src.score import get_score_function
+from src.crossover import perform_crossover
+from src.mutation import perform_node_mutation
+from src.binary_tree import build_full_binary_tree, calculate_loss, calculate_score
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('GeneticSymbolicRegressor')
@@ -52,14 +52,12 @@ class GeneticSymbolicRegressor:
         self.elitism_ratio = elitism_ratio
         self.loss_name = loss_name
         self.score_name = score_name
-        self.loss_function = Loss().get_loss_function(loss_name)
-        self.score_function = Score().get_score_function(score_name)
+        self.loss_function = get_loss_function(loss_name)
+        self.score_function = get_score_function(score_name)
         self.max_generations = max_generations
         self.timeout = timeout
         self.stop_score = stop_score
         self.verbose = verbose
-        self.search_results = SearchResults()
-        self.df_results = None
 
         random.seed(random_state)
         np.random.seed(random_state)
@@ -84,27 +82,30 @@ class GeneticSymbolicRegressor:
             if self.stop_score < -1.0 or self.stop_score > 1.0:
                 raise ValueError("Stop score should be between -1.0 and 1.0")
 
-    def _create_individuals(self, num_individuals: int) -> List[BinaryTree]:
+
+    def _create_individuals(self, num_individuals: int) -> List[dict]:
         individuals = list()
         for _ in range(num_individuals):
-            individuals.append(BinaryTree(
-                max_initialization_depth=self.max_initialization_individual_depth,
-                variables=self.variables,
-                unary_operators=self.unary_operators,
-                binary_operators=self.binary_operators
-            ))
+            individuals.append(
+                build_full_binary_tree(
+                    max_initialization_depth=self.max_initialization_individual_depth,
+                    variables=self.variables,
+                    unary_operators=self.unary_operators,
+                    binary_operators=self.binary_operators
+                )
+            )
         return individuals
     
-    def _sort_by_loss(self, individuals: List[BinaryTree]) -> None:
-        individuals.sort(key=lambda individual: individual.loss, reverse=False)
+    def _sort_by_loss(self, individuals: List[dict]) -> None:
+        individuals.sort(key=lambda individual: individual["loss"], reverse=False)
         return individuals
 
-    def _perform_tournament_selection(self, individuals, k: int = 2) -> List[Tuple[BinaryTree, BinaryTree]]:
+    def _perform_tournament_selection(self, individuals, k: int = 2) -> List[Tuple[dict, dict]]:
         parents = list()
         num_individuals_in_tournament = int(
             ((len(individuals) * self.tournament_ratio) - (len(individuals) * self.tournament_ratio) % k) / k
         )
-        individuals_to_select = [individual for individual in individuals if individual.loss is not np.inf]
+        individuals_to_select = [individual for individual in individuals if individual["loss"] is not np.inf]
         i = 0
         while True:
             if random.random() < self.prob_crossover:
@@ -121,149 +122,47 @@ class GeneticSymbolicRegressor:
         
         return parents
 
-    def _depth_within_limits_after_crossover(self, parent: BinaryTree, parent_subtree_parent, parent_to_cross: Node, side: str):
-        if side == "left":
-            parent_subtree_parent_depth = parent_subtree_parent.left.calculate_max_depth()
-        else:
-            parent_subtree_parent_depth = parent_subtree_parent.right.calculate_max_depth()
-        parent_depth = parent.depth
-        parent_to_cross_node_depth = parent_to_cross.calculate_max_depth()
-
-        depth_after_crossover = parent_depth - parent_subtree_parent_depth + parent_to_cross_node_depth
-        if parent.max_depth >= depth_after_crossover:
-            return True
-        else:
-            return False
-
-
-    def ___perform_crossover(self, parents: List[Tuple[BinaryTree, BinaryTree]]) -> List[BinaryTree]: #ESTO ES UNA PRUEBA PARA EVITAR QUE EL MAX DEPTH SE PASE
-        offsprings = list()
-        num_crossover_tries = 1
-        for parent1, parent2 in parents:
-            tries = 0
-            keep_trying = True
-            while(keep_trying):
-                tries += 1
-                
-                parent1_node = random.choice(parent1.nodes)
-                parent2_node = random.choice(parent2.nodes)
-
-                aux_parent1 = copy.deepcopy(parent1)
-                aux_parent2 = copy.deepcopy(parent2)
-                aux_parent1_node = copy.deepcopy(parent1_node)
-                aux_parent2_node = copy.deepcopy(parent2_node)
-
-                parent1_subtree_parent, parent1_subtree_side = aux_parent1_node.parent, aux_parent1_node.parent_side()
-                parent2_subtree_parent, parent2_subtree_side = aux_parent2_node.parent, aux_parent2_node.parent_side()
-
-                if parent1_subtree_parent:
-                    if parent1_subtree_side == "left":
-                        if self._depth_within_limits_after_crossover(aux_parent1, parent1_subtree_parent, aux_parent2_node, parent1_subtree_side):
-                            parent1_subtree_parent.left = aux_parent2_node
-                            keep_trying = False
-                    else:
-                        if self._depth_within_limits_after_crossover(aux_parent1, parent1_subtree_parent, aux_parent2_node, parent1_subtree_side):
-                            parent1_subtree_parent.right = aux_parent2_node
-                            keep_trying = False
-                else:
-                    aux_parent1.root = aux_parent2_node
-                    keep_trying = False
-
-                if parent2_subtree_parent:
-                    if parent2_subtree_side == "left":
-                        if self._depth_within_limits_after_crossover(aux_parent2, parent2_subtree_parent, parent1_node, parent2_subtree_side):
-                            parent2_subtree_parent.left = aux_parent1_node
-                            keep_trying = False
-                    else:
-                        if self._depth_within_limits_after_crossover(aux_parent2, parent2_subtree_parent, parent1_node, parent2_subtree_side):
-                            parent2_subtree_parent.right = aux_parent1_node
-                            keep_trying = False
-                else:
-                    aux_parent2.root = aux_parent1_node
-                    keep_trying = False
-                
-                if num_crossover_tries <= tries:
-                    offsprings.append(parent1)
-                    offsprings.append(parent2)
-                    #print(f"HE PROBADO {tries} VECES Y NO LO HE CONSEGUIDO")
-                    break
-
-                if not keep_trying:
-                    parent1_node.parent = parent2_subtree_parent
-                    parent2_node.parent = parent1_subtree_parent
-
-                    parent1.update_tree_info()
-                    parent2.update_tree_info()
-
-                    offsprings.append(parent1)
-                    offsprings.append(parent2)
-                    
-        return offsprings
-    
-    def _perform_crossover(self, parents: List[Tuple[BinaryTree, BinaryTree]]) -> List[BinaryTree]:
-        offsprings = list()
-        for parent1, parent2 in parents:
-            aux_parent1 = copy.deepcopy(parent1)
-            aux_parent2 = copy.deepcopy(parent2)
-
-            aux_parent1_node = copy.deepcopy(random.choice(parent1.nodes))
-            aux_parent2_node = copy.deepcopy(random.choice(parent2.nodes))
-
-            parent1_subtree_parent, parent1_subtree_side = aux_parent1_node.parent, aux_parent1_node.parent_side()
-            parent2_subtree_parent, parent2_subtree_side = aux_parent2_node.parent, aux_parent2_node.parent_side()
-
-            if parent1_subtree_parent:
-                if parent1_subtree_side == "left":
-                    parent1_subtree_parent.left = aux_parent2_node
-                else:
-                    parent1_subtree_parent.right = aux_parent2_node
-            else:
-                aux_parent1.root = aux_parent2_node
-
-            if parent2_subtree_parent:
-                if parent2_subtree_side == "left":
-                    parent2_subtree_parent.left = aux_parent1_node
-                else:
-                    parent2_subtree_parent.right = aux_parent1_node
-            else:
-                aux_parent2.root = aux_parent1_node
-            
-            aux_parent1_node.parent = parent2_subtree_parent
-            aux_parent2_node.parent = parent1_subtree_parent
-
-            aux_parent1.update_tree_info()
-            aux_parent2.update_tree_info()
-
-            offsprings.append(aux_parent1)
-            offsprings.append(aux_parent2)
-                
-        return offsprings
-
-    def _perform_mutation(self, offsprings: List[BinaryTree]) -> None:
-        for i in range(len(offsprings)):
-            if random.random() <= self.prob_node_mutation:
-                offsprings[i].perform_mutation()
-                offsprings[i].update_tree_info()
-        return offsprings
-
-    def _perform_elitism(self, individuals: List[BinaryTree]) -> List[BinaryTree]:
+    def _perform_elitism(self, individuals: List[dict]) -> List[dict]:
         num_elite_individuals = int(len(individuals) * self.elitism_ratio)
         elite_individuals = individuals[:num_elite_individuals]
-        return [copy.deepcopy(individual) for individual in elite_individuals]
+        return [individual for individual in elite_individuals]
 
-    def _calculate_loss(self, individuals: List[BinaryTree], X: np.ndarray, y: np.ndarray) -> List[BinaryTree]:
+    def _perform_mutation(self, individuals: List[dict]) -> List[dict]:
         for i in range(len(individuals)):
-            individuals[i].calculate_loss(X, y, self.loss_function)
-
-        return individuals
-
-    def _calculate_score(self, individuals: List[BinaryTree], X: np.ndarray, y: np.ndarray) -> List[BinaryTree]:
-        for i in range(len(individuals)):
-            individuals[i].calculate_score(X, y, self.score_function)
-
+            individuals[i]["tree"] = perform_node_mutation(
+                individuals[i]["tree"],
+                self.prob_node_mutation,
+                self.unary_operators,
+                self.binary_operators,
+                self.variables
+            )
         return individuals
     
-    def _prepare_next_epoch_individual(self, offsprings: List[BinaryTree], elite_individuals: List[BinaryTree]) -> List[BinaryTree]:
+    def _perform_crossover(self, parents: Tuple[List[dict], List[dict]]) -> List[dict]:
+        offsprings = list()
+        operators = self.unary_operators + self.binary_operators
+        for parent1, parent2 in parents:
+            offspring1, offspring2 = perform_crossover(
+                parent1,
+                parent2,
+                operators,
+                self.variables
+            )
+            offsprings.append(offspring1)
+            offsprings.append(offspring2)
+        return offsprings
+
+    def _calculate_loss(self, individuals: List[dict], X: np.ndarray, y: np.ndarray) -> List[dict]:
+        for i in range(len(individuals)):
+            individuals[i]["loss"] = calculate_loss(X, y, self.loss_function, individuals[i]["executable_equation"])
+        return individuals
+
+    def _calculate_score(self, individuals: List[dict], X: np.ndarray, y: np.ndarray) -> List[dict]:
+        for i in range(len(individuals)):
+            individuals[i]["score"] = calculate_score(X, y, self.score_function, individuals[i]["executable_equation"])
+        return individuals
+    
+    def _prepare_next_epoch_individual(self, offsprings: List[dict], elite_individuals: List[dict]) -> List[dict]:
         new_individuals = self._create_individuals(self.num_individuals_per_epoch - len(offsprings) - len(elite_individuals))
         return (
             elite_individuals +
@@ -309,14 +208,15 @@ class GeneticSymbolicRegressor:
         individuals = self._calculate_loss(individuals, X, y)
         individuals = self._calculate_score(individuals, X, y)
         individuals = self._sort_by_loss(individuals)
-        self.search_results.add_best_individuals_by_loss_and_complexity(individuals, 0)
-        #self.search_results.extract_summary_statistics_from_individuals(individuals, 0)
-        self.search_results.visualize_best_in_generation()
+        print("GENERATION 0")
+        print(f"LOSS = {individuals[0]['loss']}")
+        print(f"SCORE = {individuals[0]['score']}")
+        print(f"EQUATION = {individuals[0]['equation']}")
 
         best_individual = individuals[0]
         for generation in range(1, self.max_generations + 1):
             stop_timeout_criteria = self._check_stop_timeout(start_time)
-            stop_score_criteria = self._check_stop_score(best_individual.score)
+            stop_score_criteria = self._check_stop_score(best_individual["score"])
             stop_max_generations_criteria = self._check_max_generations_criteria(generation)
             if self.verbose >= 1:
                 if stop_timeout_criteria:
@@ -340,10 +240,9 @@ class GeneticSymbolicRegressor:
             individuals = self._calculate_score(individuals, X, y)
             individuals = self._sort_by_loss(individuals)
             best_individual = individuals[0]
+            print(f"GENERATION {generation}")
+            print(f"LOSS = {best_individual['loss']}")
+            print(f"SCORE = {best_individual['score']}")
+            print(f"EQUATION = {best_individual['equation']}")
+            print("\n================================================================\n")
 
-            self.search_results.add_best_individuals_by_loss_and_complexity(individuals, generation)
-            #self.search_results.extract_summary_statistics_from_individuals(individuals, generation)
-            self.search_results.visualize_best_in_generation()
-
-        #self.search_results.plot_evolution_per_complexity()
-        #self.search_results.plot_evolution()

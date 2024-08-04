@@ -19,7 +19,7 @@ def generate_hooks_law_data():
 
     X = pd.DataFrame({
         "k": k,
-        "original_lenght": original_length,
+        "original_length": original_length,
         "current_length": current_length
     })
 
@@ -56,7 +56,7 @@ X = pd.DataFrame({
 variables, X, y = generate_hooks_law_data()
 #variables, X, y = generate_newtons_law_data()
 
-unary_operators = []#["exp", "abs", "log", "sin", "cos", "tan", "**0", "**2", "**3", "**-1", "**-2", "**-3"]   #CUANDO SOLO HAY UN OPERADOR FALLA LA MUTACION
+unary_operators = ["exp", "abs", "log", "sin", "cos", "tan", "**0", "**2", "**3", "**-1", "**-2", "**-3"]   #CUANDO SOLO HAY UN OPERADOR FALLA LA MUTACION
 binary_operators = ["+", "-", "*", "**", "/"]
 
 model = GeneticSymbolicRegressor(

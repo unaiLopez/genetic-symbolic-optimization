@@ -19,12 +19,10 @@ from numba import jit
 from PIL import Image
 from typing import List, Callable
 from src.operations import *
-from collections import deque
-from src.node import Node, NodeType
 
 warnings.filterwarnings('ignore', category=RuntimeWarning)
 
-def build_tree(
+def _build_tree(
     depth: int,
     parent: dict,
     variables: List[str],
@@ -54,10 +52,10 @@ def build_tree(
         }
                 
         if node_value in unary_operators:
-            node[node_value]["right"] = build_tree(depth - 1, node, variables, unary_operators, binary_operators)
+            node[node_value]["right"] = _build_tree(depth - 1, node, variables, unary_operators, binary_operators)
         elif node_value in binary_operators:
-            node[node_value]["left"] = build_tree(depth - 1, node, variables, unary_operators, binary_operators)
-            node[node_value]["right"] = build_tree(depth - 1, node, variables, unary_operators, binary_operators)
+            node[node_value]["left"] = _build_tree(depth - 1, node, variables, unary_operators, binary_operators)
+            node[node_value]["right"] = _build_tree(depth - 1, node, variables, unary_operators, binary_operators)
 
         return node    
 
@@ -77,7 +75,7 @@ def build_full_binary_tree(
         "complexity": None
     }
 
-    tree = build_tree(
+    tree = _build_tree(
         full_binary_tree["max_depth"],
         {},
         variables,
@@ -85,10 +83,15 @@ def build_full_binary_tree(
         binary_operators
     )
     full_binary_tree["tree"] = tree
+    full_binary_tree = update_tree_info(
+        full_binary_tree,
+        unary_operators + binary_operators,
+        variables
+    )
 
     return full_binary_tree
 
-def build_equation(node: dict, operators: List[str]) -> str:
+def _build_equation(node: dict, operators: List[str]) -> str:
     node_value = list(node.keys())[0]
     node_value_children = node[node_value]
     if node_value in operators:
@@ -99,14 +102,14 @@ def build_equation(node: dict, operators: List[str]) -> str:
     if not node_value_children["left"] and not node_value_children["right"]:
         return operation
     elif node_value_children["right"] and not node_value_children["left"]:
-        right_expr = build_equation(node_value_children["right"], operators)
+        right_expr = _build_equation(node_value_children["right"], operators)
         return f"({operation}({right_expr}))"
     elif node_value_children["left"] and node_value_children["right"]:
-        left_expr = build_equation(node_value_children["left"], operators)
-        right_expr = build_equation(node_value_children["right"], operators)
+        left_expr = _build_equation(node_value_children["left"], operators)
+        right_expr = _build_equation(node_value_children["right"], operators)
         return f"({operation}({left_expr}, {right_expr}))"
     
-def build_executable_equation(equation: str, variables: List[str]) -> str:
+def _build_executable_equation(equation: str, variables: List[str]) -> str:
     substitutions = {}
     for i, col in enumerate(variables):
         substitutions[col] = f"X[:, {i}]"
@@ -146,7 +149,7 @@ def calculate_score(
         score = 0
     return float(score)
 
-def get_complexity(node: dict) -> int:
+def _get_complexity(node: dict) -> int:
     if node is None:
         return 0
     
@@ -154,18 +157,18 @@ def get_complexity(node: dict) -> int:
     left_child = list(node.values())[0]["left"]
     right_child = list(node.values())[0]["right"]
     
-    count += get_complexity(left_child)
-    count += get_complexity(right_child)
+    count += _get_complexity(left_child)
+    count += _get_complexity(right_child)
     
     return count
 
-def calculate_max_depth(tree: dict) -> int:
+def _calculate_max_depth(tree: dict) -> int:
     if tree == {}:
         return 0
 
     node = tree[list(tree.keys())[0]]
-    left_depth = calculate_max_depth(node["left"]) if node["left"] else 0
-    right_depth = calculate_max_depth(node["right"]) if node["right"] else 0
+    left_depth = _calculate_max_depth(node["left"]) if node["left"] else 0
+    right_depth = _calculate_max_depth(node["right"]) if node["right"] else 0
     return max(left_depth, right_depth) + 1
 
 def update_tree_info(
@@ -173,17 +176,19 @@ def update_tree_info(
     operators: List[str],
     variables: List[str]) -> dict:
 
-    tree["complexity"] = get_complexity(tree["tree"])
-    tree["depth"] = calculate_max_depth(tree["tree"])
-    tree["equation"] = build_equation(tree["tree"], operators)
-    tree["executable_equation"] = build_executable_equation(tree["equation"], variables)
+    tree["complexity"] = _get_complexity(tree["tree"])
+    tree["depth"] = _calculate_max_depth(tree["tree"])
+    tree["equation"] = _build_equation(tree["tree"], operators)
+    tree["executable_equation"] = _build_executable_equation(tree["equation"], variables)
+
+    return tree
 
 def visualize_binary_tree(node: dict, variables: List[str]) -> None:
     graph = graphviz.Digraph()
     parent_node_id = str(uuid.uuid1())
     graph.node(name=parent_node_id, label=str(list(node.keys())[0]), style="filled", fillcolor="red")
 
-    def add_nodes_edges(node: dict, node_id: str) -> None:
+    def _add_nodes_edges(node: dict, node_id: str) -> None:
         node_left_id = str(uuid.uuid1())
         node_right_id = str(uuid.uuid1())
         
@@ -201,7 +206,7 @@ def visualize_binary_tree(node: dict, variables: List[str]) -> None:
 
             graph.node(name=node_left_id, label=node_value_left, shape=shape, style="filled", fillcolor=left_fill_color)
             graph.edge(node_id, node_left_id)
-            add_nodes_edges(node_value_children["left"], node_left_id)
+            _add_nodes_edges(node_value_children["left"], node_left_id)
         if node_value_children["right"]:
             node_value_right = list(node_value_children["right"].keys())[0]
             if node_value_right not in list(variables) + ["const"]:
@@ -213,9 +218,9 @@ def visualize_binary_tree(node: dict, variables: List[str]) -> None:
 
             graph.node(name=node_right_id, label=node_value_right, shape=shape, style="filled", fillcolor=right_fill_color)
             graph.edge(node_id, node_right_id)
-            add_nodes_edges(node_value_children["right"], node_right_id)
+            _add_nodes_edges(node_value_children["right"], node_right_id)
 
-    add_nodes_edges(node, parent_node_id)
+    _add_nodes_edges(node, parent_node_id)
 
     #graph_path = "equation_tree.png"
     #graph.render(graph_path, format="png", cleanup=True)
@@ -239,18 +244,18 @@ if __name__ == "__main__":
         pprint(my_binary_tree)
 
         print("THIS IS THE NUMPY EQUATION")
-        equation = build_equation(my_binary_tree["tree"], unary_operators + binary_operators)
+        equation = _build_equation(my_binary_tree["tree"], unary_operators + binary_operators)
         print(equation)
 
         print("THIS IS THE EXECUTABLE NUMPY EQUATION")
-        executable_equation = build_executable_equation(equation, variables)
+        executable_equation = _build_executable_equation(equation, variables)
         print(executable_equation)
 
         print("TREE DEPTH")
-        print(calculate_max_depth(my_binary_tree["tree"]))
+        print(_calculate_max_depth(my_binary_tree["tree"]))
 
         print("COMPLEXITY")
-        print(get_complexity(my_binary_tree["tree"]))
+        print(_get_complexity(my_binary_tree["tree"]))
 
         print("VISUALIZE TREE")
         visualize_binary_tree(my_binary_tree["tree"], variables)

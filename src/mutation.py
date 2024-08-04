@@ -25,7 +25,7 @@ def perform_node_mutation(
     variables: List[str]):
     
     # Helper function to perform mutation
-    def mutate_node(node: dict):
+    def _mutate_node(node: dict):
         if node is None:
             return
         
@@ -33,7 +33,7 @@ def perform_node_mutation(
         children = node[current_node_key]
 
         # Randomly decide whether to mutate this node or descend further
-        if random.random() < prob_mutation:  # 20% chance to mutate this node
+        if random.random() < prob_mutation:
             if current_node_key in unary_operators:
                 # Replace with another operator
                 new_operator = random.choice(unary_operators)
@@ -58,12 +58,12 @@ def perform_node_mutation(
         else:
             # Recursively apply mutation to left and right children
             if children["left"] is not None:
-                mutate_node(children["left"])
+                _mutate_node(children["left"])
             if children["right"] is not None:
-                mutate_node(children["right"])
+                _mutate_node(children["right"])
 
     # Start mutation from the root node
-    mutate_node(node)
+    _mutate_node(node)
     return node
     
     def perform_hoist_mutation():
@@ -79,26 +79,3 @@ def perform_node_mutation(
         Select a subtree and replace it with one of its subtrees, effectively shrinking the tree.
         """
         pass
-
-# Example tree
-binary_tree = {'/': {'left': {'**': {'left': {'sin': {'left': None,
-                                                     'right': {'x0': {'left': None,
-                                                                      'right': None}}}},
-                                    'right': {'cos': {'left': None,
-                                                      'right': {'x1': {'left': None,
-                                                                       'right': None}}}}}},
-                    'right': {'cos': {'left': None,
-                                      'right': {'abs': {'left': None,
-                                                        'right': {'x1': {'left': None,
-                                                                         'right': None}}}}}}}}
-
-variables = ["x0", "x1"]
-unary_operators = ["sin", "cos", "tan", "log", "abs", "exp"]
-binary_operators = ["+", "-", "*", "**", "/"]
-
-# Perform mutation
-from pprint import pprint
-from new_binary_tree import visualize_binary_tree
-visualize_binary_tree(binary_tree, variables)
-mutated_tree = perform_node_mutation(binary_tree, 0.5, unary_operators, binary_operators, variables)
-visualize_binary_tree(mutated_tree, variables)

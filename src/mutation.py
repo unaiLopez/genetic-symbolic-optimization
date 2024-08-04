@@ -16,7 +16,6 @@ def perform_subtree_mutation():
     """
     pass
         
-
 def perform_node_mutation(
     node: dict,
     prob_mutation: float,

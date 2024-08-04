@@ -54,13 +54,13 @@ X = pd.DataFrame({
 #y = pd.Series(y_values)
 
 variables, X, y = generate_hooks_law_data()
-#variables, X, y = generate_newtons_law_data()
+variables, X, y = generate_newtons_law_data()
 
 unary_operators = ["exp", "abs", "log", "sin", "cos", "tan", "**0", "**2", "**3", "**-1", "**-2", "**-3"]   #CUANDO SOLO HAY UN OPERADOR FALLA LA MUTACION
 binary_operators = ["+", "-", "*", "**", "/"]
 
 model = GeneticSymbolicRegressor(
-    num_individuals_per_epoch=1000,
+    num_individuals_per_epoch=2000,
     max_initialization_individual_depth=5, #HAY QUE REVISAR QUE LA DEPTH NUNCA SEA SUPERIOR A ESTA
     variables=variables,
     unary_operators=unary_operators,

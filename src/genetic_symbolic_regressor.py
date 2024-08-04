@@ -82,7 +82,6 @@ class GeneticSymbolicRegressor:
             if self.stop_score < -1.0 or self.stop_score > 1.0:
                 raise ValueError("Stop score should be between -1.0 and 1.0")
 
-
     def _create_individuals(self, num_individuals: int) -> List[dict]:
         individuals = list()
         for _ in range(num_individuals):

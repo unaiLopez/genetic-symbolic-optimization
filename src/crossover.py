@@ -1,10 +1,7 @@
 import copy
 import random
 
-from typing import List, Tuple
 from src.binary_tree import update_tree_info
-
-import random
 from typing import List, Tuple, Any, Dict
 
 def _collect_all_nodes(node: Dict[str, Any], path: List[Tuple[str, str]], nodes: List[Tuple[List[Tuple[str, str]], str]]) -> None:

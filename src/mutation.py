@@ -1,6 +1,6 @@
 import random
 
-from typing import List
+from typing import List, Any
 
 def perform_subtree_mutation():
     #TODO
@@ -17,49 +17,43 @@ def perform_subtree_mutation():
     pass
         
 def perform_node_mutation(
-    node: dict,
+    node: List[Any],
     prob_mutation: float,
     unary_operators: List[str],
     binary_operators: List[str],
     variables: List[str]):
     
     # Helper function to perform mutation
-    def _mutate_node(node: dict):
+    def _mutate_node(node: List[Any]):
         if node is None:
             return
         
-        current_node_key = list(node.keys())[0]
-        children = node[current_node_key]
-
         # Randomly decide whether to mutate this node or descend further
         if random.random() < prob_mutation:
-            if current_node_key in unary_operators:
+            if node[0] in unary_operators:
                 # Replace with another operator
                 new_operator = random.choice(unary_operators)
-                while new_operator == current_node_key:
+                while new_operator == node[0]:
                     new_operator = random.choice(unary_operators)
-                node[new_operator] = children
-                del node[current_node_key]
-            elif current_node_key in binary_operators:
+                node[0] = new_operator
+            elif node[0] in binary_operators:
                 # Replace with another operator
                 new_operator = random.choice(binary_operators)
-                while new_operator == current_node_key:
+                while new_operator == node[0]:
                     new_operator = random.choice(binary_operators)
-                node[new_operator] = children
-                del node[current_node_key]
-            elif current_node_key in variables:
+                node[0] = new_operator
+            elif node[0] in variables:
                 # Replace with another terminal
                 new_terminal = random.choice(variables)
-                while new_terminal == current_node_key:
+                while new_terminal == node[0]:
                     new_terminal = random.choice(variables)
-                node[new_terminal] = children
-                del node[current_node_key]
+                node[0] = new_terminal
         else:
             # Recursively apply mutation to left and right children
-            if children["left"] is not None:
-                _mutate_node(children["left"])
-            if children["right"] is not None:
-                _mutate_node(children["right"])
+            if node[1] is not None:
+                _mutate_node(node[1])
+            if node[1] is not None:
+                _mutate_node(node[2])
 
     # Start mutation from the root node
     _mutate_node(node)

@@ -1,61 +1,56 @@
 import copy
 import random
 
-from src.binary_tree import update_tree_info
-from typing import List, Tuple, Any, Dict
+from binary_tree import update_tree_info
+from typing import List, Tuple, Any, Dict, Optional
 
-def _collect_all_nodes(node: Dict[str, Any], path: List[Tuple[str, str]], nodes: List[Tuple[List[Tuple[str, str]], str]]) -> None:
-    if node is None or not isinstance(node, dict) or not node:
+def _collect_all_nodes(tree: List[Any], path: List[int], nodes: List[Tuple[List[int], Any]]) -> None:
+    if tree is None or not isinstance(tree, list) or not tree:
         return
-    
-    # Extract the single key of the current node
-    current_node_key = list(node.keys())[0]
-    children = node[current_node_key]
 
     # Record the current node and its path
-    nodes.append((path.copy(), current_node_key))
+    nodes.append((path.copy(), tree[0]))
 
     # Recur on left and right children if they exist
-    if children.get('left'):
-        _collect_all_nodes(children['left'], path + [(current_node_key, 'left')], nodes)
-    if children.get('right'):
-        _collect_all_nodes(children['right'], path + [(current_node_key, 'right')], nodes)
+    if len(tree) > 1 and tree[1] is not None:
+        _collect_all_nodes(tree[1], path + [1], nodes)
+    if len(tree) > 2 and tree[2] is not None:
+        _collect_all_nodes(tree[2], path + [2], nodes)
 
-def _select_random_node(node: Dict[str, Any]) -> List[Tuple[str, str]]:
+def _select_random_node(tree: List[Any]) -> List[int]:
     nodes = []
-    _collect_all_nodes(node, [], nodes)
+    _collect_all_nodes(tree, [], nodes)
     if not nodes:
         return []  # No nodes to select
     selected_path, _ = random.choice(nodes)
     return selected_path
 
-def _get_subtree(node: Dict[str, Any], path: List[Tuple[str, str]]) -> Dict[str, Any]:
-    current = node
-    for key, direction in path:
-        current = current[key][direction]
-        if current is None:
+def _get_subtree(tree: List[Any], path: List[int]) -> Optional[List[Any]]:
+    current = tree
+    for p in path:
+        if not (0 <= p < len(current)) or current[p] is None:
             return None
+        current = current[p]
     return current
 
-def _set_subtree(node: Dict[str, Any], path: List[Tuple[str, str]], subtree: Dict[str, Any]) -> None:
+def _set_subtree(tree: List[Any], path: List[int], new_subtree: List[Any]) -> None:
     if not path:
         raise ValueError("Path cannot be empty when setting a subtree.")
 
-    current = node
+    current = tree
     # Traverse the path except for the last element
-    for key, direction in path[:-1]:
-        if key not in current or direction not in current[key]:
-            raise KeyError(f"Path segment ({key}, {direction}) does not exist in the tree structure.")
-        current = current[key][direction]
+    for p in path[:-1]:
+        if not (0 <= p < len(current)) or current[p] is None:
+            raise IndexError(f"Path segment {p} does not exist in the tree structure.")
+        current = current[p]
 
-    last_key, last_direction = path[-1]
-    if last_key in current and last_direction in current[last_key]:
-        current[last_key][last_direction] = subtree
+    last_index = path[-1]
+    if 0 <= last_index < len(current):
+        current[last_index] = new_subtree
     else:
-        raise KeyError(f"Final path segment ({last_key}, {last_direction}) does not exist in the tree structure. "
-                       f"Current state: {current}")
+        raise IndexError(f"Final path index {last_index} does not exist in the tree structure. Current state: {current}")
 
-def perform_crossover(tree1: dict, tree2: dict, operators: List[str], variables: List[str]) -> Tuple[dict, dict]:
+def perform_crossover(tree1: List[Any], tree2: List[Any], operators: List[str], variables: List[str]) -> Tuple[List[Any], List[Any]]:
     """
     Perform crossover between two binary trees and return two new trees.
     """
@@ -63,25 +58,27 @@ def perform_crossover(tree1: dict, tree2: dict, operators: List[str], variables:
     new_tree2 = copy.deepcopy(tree2)
 
     # Select random crossover points in both trees
-    path1 = _select_random_node(new_tree1["tree"])
-    path2 = _select_random_node(new_tree2["tree"])
+    path1 = _select_random_node(new_tree1[-1])
+    path2 = _select_random_node(new_tree2[-1])
     
     if not path1 or not path2:
         # If either path is empty, return the original trees as they are
         return tree1, tree2
     
     # Get the subtrees at the selected paths
-    subtree1 = _get_subtree(new_tree1["tree"], path1)
-    subtree2 = _get_subtree(new_tree2["tree"], path2)
+    subtree1 = _get_subtree(new_tree1[-1], path1)
+    subtree2 = _get_subtree(new_tree2[-1], path2)
 
     if subtree1 is None or subtree2 is None:
         # If either subtree is invalid, return trees as they are
         return tree1, tree2
 
     # Swap the subtrees
-    _set_subtree(new_tree1["tree"], path1, subtree2)
-    _set_subtree(new_tree2["tree"], path2, subtree1)
+    _set_subtree(new_tree1[-1], path1, subtree2)
+    _set_subtree(new_tree2[-1], path2, subtree1)
 
+    # Example placeholder for updating tree information
+    # Update this function as per your specific requirements
     new_tree1 = update_tree_info(new_tree1, operators, variables)
     new_tree2 = update_tree_info(new_tree2, operators, variables)
 

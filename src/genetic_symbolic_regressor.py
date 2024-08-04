@@ -96,7 +96,7 @@ class GeneticSymbolicRegressor:
         return individuals
     
     def _sort_by_loss(self, individuals: List[dict]) -> None:
-        individuals.sort(key=lambda individual: individual["loss"], reverse=False)
+        individuals.sort(key=lambda individual: individual[1], reverse=False)
         return individuals
 
     def _perform_tournament_selection(self, individuals, k: int = 2) -> List[Tuple[dict, dict]]:
@@ -104,7 +104,7 @@ class GeneticSymbolicRegressor:
         num_individuals_in_tournament = int(
             ((len(individuals) * self.tournament_ratio) - (len(individuals) * self.tournament_ratio) % k) / k
         )
-        individuals_to_select = [individual for individual in individuals if individual["loss"] is not np.inf]
+        individuals_to_select = [individual for individual in individuals if individual[1] is not np.inf]
         i = 0
         while True:
             if random.random() < self.prob_crossover:
@@ -128,8 +128,8 @@ class GeneticSymbolicRegressor:
 
     def _perform_mutation(self, individuals: List[dict]) -> List[dict]:
         for i in range(len(individuals)):
-            individuals[i]["tree"] = perform_node_mutation(
-                individuals[i]["tree"],
+            individuals[i][-1] = perform_node_mutation(
+                individuals[i][-1],
                 self.prob_node_mutation,
                 self.unary_operators,
                 self.binary_operators,
@@ -153,12 +153,12 @@ class GeneticSymbolicRegressor:
 
     def _calculate_loss(self, individuals: List[dict], X: np.ndarray, y: np.ndarray) -> List[dict]:
         for i in range(len(individuals)):
-            individuals[i]["loss"] = calculate_loss(X, y, self.loss_function, individuals[i]["executable_equation"])
+            individuals[i][1] = calculate_loss(X, y, self.loss_function, individuals[i][6])
         return individuals
 
     def _calculate_score(self, individuals: List[dict], X: np.ndarray, y: np.ndarray) -> List[dict]:
         for i in range(len(individuals)):
-            individuals[i]["score"] = calculate_score(X, y, self.score_function, individuals[i]["executable_equation"])
+            individuals[i][2] = calculate_score(X, y, self.score_function, individuals[i][6])
         return individuals
     
     def _prepare_next_epoch_individual(self, offsprings: List[dict], elite_individuals: List[dict]) -> List[dict]:
@@ -168,7 +168,7 @@ class GeneticSymbolicRegressor:
             offsprings +
             new_individuals
         )
-        
+    
     def _check_stop_timeout(self, start_time: float) -> bool:
         if self.timeout != None:
             elapsed_time = time.time() - start_time
@@ -208,14 +208,14 @@ class GeneticSymbolicRegressor:
         individuals = self._calculate_score(individuals, X, y)
         individuals = self._sort_by_loss(individuals)
         print("GENERATION 0")
-        print(f"LOSS = {individuals[0]['loss']}")
-        print(f"SCORE = {individuals[0]['score']}")
-        print(f"EQUATION = {individuals[0]['equation']}")
+        print(f"LOSS = {individuals[0][1]}")
+        print(f"SCORE = {individuals[0][2]}")
+        print(f"EQUATION = {individuals[0][5]}")
 
         best_individual = individuals[0]
         for generation in range(1, self.max_generations + 1):
             stop_timeout_criteria = self._check_stop_timeout(start_time)
-            stop_score_criteria = self._check_stop_score(best_individual["score"])
+            stop_score_criteria = self._check_stop_score(best_individual[2])
             stop_max_generations_criteria = self._check_max_generations_criteria(generation)
             if self.verbose >= 1:
                 if stop_timeout_criteria:
@@ -240,8 +240,8 @@ class GeneticSymbolicRegressor:
             individuals = self._sort_by_loss(individuals)
             best_individual = individuals[0]
             print(f"GENERATION {generation}")
-            print(f"LOSS = {best_individual['loss']}")
-            print(f"SCORE = {best_individual['score']}")
-            print(f"EQUATION = {best_individual['equation']}")
+            print(f"LOSS = {best_individual[1]}")
+            print(f"SCORE = {best_individual[2]}")
+            print(f"EQUATION = {best_individual[5]}")
             print("\n================================================================\n")
 

@@ -32,6 +32,7 @@ class GeneticSymbolicRegressor:
         binary_operators: List[str],
         prob_node_mutation: float,
         prob_crossover: float,
+        crossover_retries: int,
         tournament_ratio: float,
         elitism_ratio: float,
         timeout: Optional[int],
@@ -49,6 +50,7 @@ class GeneticSymbolicRegressor:
         self.binary_operators = binary_operators
         self.prob_node_mutation = prob_node_mutation
         self.prob_crossover = prob_crossover
+        self.crossover_retries = crossover_retries
         self.tournament_ratio = tournament_ratio
         self.elitism_ratio = elitism_ratio
         self.loss_name = loss_name
@@ -148,7 +150,8 @@ class GeneticSymbolicRegressor:
                 parent2,
                 operators,
                 self.variables,
-                self.max_individual_depth
+                self.max_individual_depth,
+                self.crossover_retries
             )
             offsprings.append(offspring1)
             offsprings.append(offspring2)

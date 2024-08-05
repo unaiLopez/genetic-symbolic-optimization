@@ -167,7 +167,7 @@ def calculate_score(
         score = np.inf
     if math.isinf(score) or math.isnan(score):
         score = 0
-    return float(score)
+    return np.clip(float(score), -1, 1)
 
 def visualize_binary_tree(node: List[Any], variables: List[str]) -> None:
     graph = graphviz.Digraph()

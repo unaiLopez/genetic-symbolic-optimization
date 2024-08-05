@@ -53,20 +53,22 @@ X = pd.DataFrame({
 #y_values = (X["x0"].values**2 - 1) / X["x1"].values ** 2
 #y = pd.Series(y_values)
 
-#variables, X, y = generate_hooks_law_data()
-variables, X, y = generate_newtons_law_data()
+variables, X, y = generate_hooks_law_data()
+#variables, X, y = generate_newtons_law_data()
 
 unary_operators = []#["exp", "abs", "log", "sin", "cos", "tan", "**0", "**2", "**3", "**-1", "**-2", "**-3"]   #CUANDO SOLO HAY UN OPERADOR FALLA LA MUTACION
 binary_operators = ["+", "-", "*", "**", "/"]
 
+# LA MEJOR ECUACION TIENE QUE SER LA DE MAYOR SCORE Y MENOR COMPLEXITY REVISAR ESO
 model = GeneticSymbolicRegressor(
-    num_individuals_per_epoch=1000,
+    num_individuals_per_epoch=5000,
     max_individual_depth=5,
     variables=variables,
     unary_operators=unary_operators,
     binary_operators=binary_operators,
-    prob_node_mutation=0.2,
-    prob_crossover=0.1,
+    prob_node_mutation=0.01,
+    prob_crossover=0.05,
+    crossover_retries=3,
     tournament_ratio=0.7,
     elitism_ratio=0.01,
     timeout=600,

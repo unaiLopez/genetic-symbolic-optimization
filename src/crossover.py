@@ -50,15 +50,21 @@ def _set_subtree(tree: List[Any], path: List[int], new_subtree: List[Any]) -> No
     else:
         raise IndexError(f"Final path index {last_index} does not exist in the tree structure. Current state: {current}")
 
-def perform_crossover(tree1: List[Any], tree2: List[Any], operators: List[str], variables: List[str], max_individual_depth: int) -> Tuple[List[Any], List[Any]]:
+def perform_crossover(
+    tree1: List[Any],
+    tree2: List[Any],
+    operators: List[str],
+    variables: List[str],
+    max_individual_depth: int,
+    max_retries: int) -> Tuple[List[Any], List[Any]]:
     """
     Perform crossover between two binary trees and return two new trees.
     """
     new_tree1 = copy.deepcopy(tree1)
     new_tree2 = copy.deepcopy(tree2)
 
-    retries = 0
-    while(retries < 3):
+    current_retries = 0
+    while(current_retries < max_retries):
         # Select random crossover points in both trees
         path1 = _select_random_node(new_tree1[-1])
         path2 = _select_random_node(new_tree2[-1])
@@ -74,7 +80,7 @@ def perform_crossover(tree1: List[Any], tree2: List[Any], operators: List[str], 
         # Check if depth after crossover will be bigger than max permitted lenght    
         if ((len(path1) + _calculate_max_depth(subtree2)) > max_individual_depth or
             (len(path2) + _calculate_max_depth(subtree1)) > max_individual_depth):
-            retries += 1
+            current_retries += 1
         else:
             if subtree1 is None or subtree2 is None:
                 # If either subtree is invalid, return trees as they are

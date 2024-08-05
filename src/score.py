@@ -8,7 +8,7 @@ def calculate_r2(y: np.ndarray, y_pred: np.ndarray) -> float:
     ss_tot = np.sum((y - y_mean) ** 2)
     r2 = 1 - (ss_res / ss_tot)
 
-    return r2
+    return np.clip(r2, a_min=-1, a_max=1)
 
 def get_score_function(score_type: str) -> Callable:
     if score_type  == "r2":

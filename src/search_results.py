@@ -5,8 +5,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from typing import List
-from src.binary_tree import BinaryTree
+from typing import List, Any
 
 pd.set_option('display.max_columns', None)
 
@@ -16,16 +15,16 @@ class SearchResults:
         self.best_by_loss_complexity = None
         self.df_summary_statistics = pd.DataFrame()
 
-    def add_best_individuals_by_loss_and_complexity(self, individuals: List[BinaryTree], generation: int) -> None:
+    def add_best_individuals_by_loss_and_complexity(self, individuals: List[Any], generation: int) -> None:
         epoch_results = list()
         for individual in individuals:
             epoch_results.append({
                 "best": "",
-                "score": individual.score,
-                "loss": individual.loss,
-                "complexity": individual.complexity,
-                "tree_depth": individual.depth,
-                "equation": individual.equation,
+                "score": individual[2],
+                "loss": individual[1],
+                "complexity": individual[7],
+                "tree_depth": individual[4],
+                "equation": individual[5],
                 "generation": generation,
                 "current_generation": generation
             })
@@ -52,7 +51,7 @@ class SearchResults:
             self.best_by_loss_complexity.loc[min_index, "best"] = ">>>"
             self.best_by_loss_complexity.loc[:, "current_generation"] = generation
         
-        #self.best_by_loss_complexity_per_epoch.append(self.best_by_loss_complexity)
+        self.best_by_loss_complexity_per_epoch.append(self.best_by_loss_complexity)
 
     def visualize_best_in_generation(self):
         if platform.system() == "Windows":
@@ -62,9 +61,8 @@ class SearchResults:
         
         print(self.best_by_loss_complexity)
 
-    def extract_summary_statistics_from_individuals(self, individuals: List[BinaryTree], generation: int) -> None:
-        scores = [individual.score for individual in individuals if individual.score]
-        print(scores)
+    def extract_summary_statistics_from_individuals(self, individuals: List[Any], generation: int) -> None:
+        scores = [individual[2] for individual in individuals if individual[2]]
         df_summary_stats_by_generation = pd.DataFrame({
             "generation": [generation],
             "max": [np.max(scores)],
@@ -104,7 +102,6 @@ class SearchResults:
             title='Summary Statistics of Genetic Algorithm over Generations',
             xaxis_title='Generation',
             yaxis_title='Value',
-             yaxis_type='log',  # Set Y-axis to logarithmic scale
             legend_title='Statistic',
             template='plotly_white',  # Clean background
             margin=dict(l=50, r=50, t=50, b=50),

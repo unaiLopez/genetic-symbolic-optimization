@@ -15,6 +15,7 @@ from typing import List, Tuple, Optional, Union
 from src.loss import get_loss_function
 from src.score import get_score_function
 from src.crossover import perform_crossover
+from src.search_results import SearchResults
 from src.mutation import perform_node_mutation
 from src.binary_tree import build_full_binary_tree, calculate_loss, calculate_score
 
@@ -25,7 +26,7 @@ class GeneticSymbolicRegressor:
     def __init__(
         self, 
         num_individuals_per_epoch: int,
-        max_initialization_individual_depth: int,
+        max_individual_depth: int,
         variables: List[str],
         unary_operators: List[str],
         binary_operators: List[str],
@@ -42,7 +43,7 @@ class GeneticSymbolicRegressor:
         random_state: Optional[int] = None):
 
         self.num_individuals_per_epoch = num_individuals_per_epoch
-        self.max_initialization_individual_depth = max_initialization_individual_depth
+        self.max_individual_depth = max_individual_depth
         self.variables = variables
         self.unary_operators = unary_operators
         self.binary_operators = binary_operators
@@ -58,6 +59,7 @@ class GeneticSymbolicRegressor:
         self.timeout = timeout
         self.stop_score = stop_score
         self.verbose = verbose
+        self.search_results = SearchResults()
 
         random.seed(random_state)
         np.random.seed(random_state)
@@ -87,7 +89,7 @@ class GeneticSymbolicRegressor:
         for _ in range(num_individuals):
             individuals.append(
                 build_full_binary_tree(
-                    max_initialization_depth=self.max_initialization_individual_depth,
+                    max_initialization_depth=self.max_individual_depth,
                     variables=self.variables,
                     unary_operators=self.unary_operators,
                     binary_operators=self.binary_operators
@@ -145,7 +147,8 @@ class GeneticSymbolicRegressor:
                 parent1,
                 parent2,
                 operators,
-                self.variables
+                self.variables,
+                self.max_individual_depth
             )
             offsprings.append(offspring1)
             offsprings.append(offspring2)
@@ -207,10 +210,10 @@ class GeneticSymbolicRegressor:
         individuals = self._calculate_loss(individuals, X, y)
         individuals = self._calculate_score(individuals, X, y)
         individuals = self._sort_by_loss(individuals)
-        print("GENERATION 0")
-        print(f"LOSS = {individuals[0][1]}")
-        print(f"SCORE = {individuals[0][2]}")
-        print(f"EQUATION = {individuals[0][5]}")
+        
+        self.search_results.add_best_individuals_by_loss_and_complexity(individuals, 0)
+        self.search_results.extract_summary_statistics_from_individuals(individuals, 0)
+        self.search_results.visualize_best_in_generation()
 
         best_individual = individuals[0]
         for generation in range(1, self.max_generations + 1):
@@ -231,7 +234,6 @@ class GeneticSymbolicRegressor:
             elite_individuals = self._perform_elitism(individuals)
             parents1 = self._perform_tournament_selection(individuals)
             parents2 = self._perform_tournament_selection(individuals)
-
             offsprings = self._perform_crossover(zip(parents1, parents2))
             offsprings = self._perform_mutation(offsprings)
             individuals = self._prepare_next_epoch_individual(offsprings, elite_individuals)
@@ -239,9 +241,11 @@ class GeneticSymbolicRegressor:
             individuals = self._calculate_score(individuals, X, y)
             individuals = self._sort_by_loss(individuals)
             best_individual = individuals[0]
-            print(f"GENERATION {generation}")
-            print(f"LOSS = {best_individual[1]}")
-            print(f"SCORE = {best_individual[2]}")
-            print(f"EQUATION = {best_individual[5]}")
-            print("\n================================================================\n")
+
+            self.search_results.add_best_individuals_by_loss_and_complexity(individuals, generation)
+            self.search_results.extract_summary_statistics_from_individuals(individuals, generation)
+            self.search_results.visualize_best_in_generation()
+
+        self.search_results.plot_evolution_per_complexity()
+        self.search_results.plot_evolution()
 

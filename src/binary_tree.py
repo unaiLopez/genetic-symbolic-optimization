@@ -71,10 +71,10 @@ def update_tree_info(
     operators: List[str],
     variables: List[str]) -> dict:
 
-    tree[4] = _calculate_max_depth(tree[-1])                                                #update depth
-    tree[5] = _build_equation(tree[-1], operators)                                          #update equation
-    tree[6] = _build_executable_equation(tree[5], variables)                               #update executable equation
-    tree[7] = _get_complexity(tree[-1])                                                     #update complexity
+    tree[4] = _calculate_max_depth(tree[-1])                      #update depth
+    tree[5] = _build_equation(tree[-1], operators)                #update equation
+    tree[6] = _build_executable_equation(tree[5], variables)      #update executable equation
+    tree[7] = _get_complexity(tree[-1])                           #update complexity
 
     return tree
 

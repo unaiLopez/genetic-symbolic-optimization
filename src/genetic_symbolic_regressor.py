@@ -94,10 +94,6 @@ class GeneticSymbolicRegressor:
             )
         return individuals
     
-    def _sort_by_loss(self, individuals: List[Any]) -> None:
-        individuals.sort(key=lambda individual: individual[1], reverse=False)
-        return individuals
-
     def _perform_elitism(self, individuals: List[dict]) -> List[dict]:
         num_elite_individuals = int(len(individuals) * self.elitism_ratio)
         elite_individuals = individuals[:num_elite_individuals]
@@ -186,10 +182,9 @@ class GeneticSymbolicRegressor:
         individuals = self._create_individuals(self.num_individuals_per_epoch)
         individuals = self._calculate_loss(individuals, X, y)
         individuals = self._calculate_score(individuals, X, y)
-        individuals = self._sort_by_loss(individuals)
         
         self.search_results.add_best_individuals_by_loss_and_complexity(individuals, 0)
-        self.search_results.extract_summary_statistics_from_individuals(individuals, 0)
+        #self.search_results.extract_summary_statistics_from_individuals(individuals, 0)
         self.search_results.visualize_best_in_generation()
 
         best_individual = individuals[0]
@@ -218,11 +213,10 @@ class GeneticSymbolicRegressor:
             individuals = self._prepare_next_epoch_individual(offsprings, elite_individuals)
             individuals = self._calculate_loss(individuals, X, y)
             individuals = self._calculate_score(individuals, X, y)
-            individuals = self._sort_by_loss(individuals)
             best_individual = individuals[0]
 
             self.search_results.add_best_individuals_by_loss_and_complexity(individuals, generation)
-            self.search_results.extract_summary_statistics_from_individuals(individuals, generation)
+            #self.search_results.extract_summary_statistics_from_individuals(individuals, generation)
             self.search_results.visualize_best_in_generation()
 
         #self.search_results.plot_evolution_per_complexity()

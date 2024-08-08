@@ -14,3 +14,7 @@ Convertir formulas en numpy a sympy
 Añadir constantes con optimizacion de constantes (scipy)
 Implementar operadores min, max, mean (esto podria ser interesante para el ML)
 Implementar benchmarks.py -> Con esto podremos ir evaluando si los cambios ayudan a mejorar o no (mirar benchmarks de PySr)
+Probar métrica BIC, AIC o Weighted_IC:
+    BIC = n⋅ln(σ^2) + k⋅ln(n)
+    AIC = n⋅ln(RSS / n​) + 2⋅k
+    Weighted_IC = α⋅AIC+(1 − α)⋅BIC

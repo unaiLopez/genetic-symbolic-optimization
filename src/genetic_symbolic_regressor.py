@@ -10,13 +10,14 @@ import numpy as np
 import pandas as pd
 
 from numba import jit
-from typing import List, Tuple, Optional, Union
+from typing import List, Tuple, Optional, Union, Any
 
 from src.loss import get_loss_function
 from src.score import get_score_function
 from src.crossover import perform_crossover
 from src.search_results import SearchResults
 from src.mutation import perform_node_mutation
+from src.tournament import perform_tournament_selection
 from src.binary_tree import build_full_binary_tree, calculate_loss, calculate_score
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -33,7 +34,7 @@ class GeneticSymbolicRegressor:
         prob_node_mutation: float,
         prob_crossover: float,
         crossover_retries: int,
-        tournament_ratio: float,
+        tournament_size: int,
         elitism_ratio: float,
         timeout: Optional[int],
         stop_score: Optional[float],
@@ -51,7 +52,7 @@ class GeneticSymbolicRegressor:
         self.prob_node_mutation = prob_node_mutation
         self.prob_crossover = prob_crossover
         self.crossover_retries = crossover_retries
-        self.tournament_ratio = tournament_ratio
+        self.tournament_size = tournament_size
         self.elitism_ratio = elitism_ratio
         self.loss_name = loss_name
         self.score_name = score_name
@@ -70,12 +71,6 @@ class GeneticSymbolicRegressor:
             raise TypeError("Variables should be of type List[str]")
         if self.prob_node_mutation < 0.0 or self.prob_node_mutation > 1.0:
             raise ValueError("Mutation probability should be between 0.0 and 1.0")
-        if self.tournament_ratio < 0.0 or self.tournament_ratio > 1.0:
-            raise ValueError("Tournament ratio should be between 0.0 and 1.0")
-        if self.elitism_ratio < 0.0 or self.elitism_ratio > 1.0:
-            raise ValueError("Elitism ratio should be between 0.0 and 1.0")
-        if (self.elitism_ratio + tournament_ratio) < 0.0 or (self.elitism_ratio + tournament_ratio) > 1.0:
-            raise ValueError("Elitism ratio and tournament ratio combined should be between 0.0 and 1.0")
         if self.max_generations is not None:
             if self.max_generations <= 0:
                 raise ValueError("Max generations should be bigger than 0")
@@ -99,31 +94,9 @@ class GeneticSymbolicRegressor:
             )
         return individuals
     
-    def _sort_by_loss(self, individuals: List[dict]) -> None:
+    def _sort_by_loss(self, individuals: List[Any]) -> None:
         individuals.sort(key=lambda individual: individual[1], reverse=False)
         return individuals
-
-    def _perform_tournament_selection(self, individuals, k: int = 2) -> List[Tuple[dict, dict]]:
-        parents = list()
-        num_individuals_in_tournament = int(
-            ((len(individuals) * self.tournament_ratio) - (len(individuals) * self.tournament_ratio) % k) / k
-        )
-        individuals_to_select = [individual for individual in individuals if individual[1] is not np.inf]
-        i = 0
-        while True:
-            if random.random() < self.prob_crossover:
-                parents.append(individuals_to_select[i])
-                individuals_to_select.pop(i)
-                i = 0
-            else:
-                if i == len(individuals_to_select) - 1:
-                    i = 0
-                else:
-                    i += 1
-            if len(parents) == num_individuals_in_tournament:
-                break
-        
-        return parents
 
     def _perform_elitism(self, individuals: List[dict]) -> List[dict]:
         num_elite_individuals = int(len(individuals) * self.elitism_ratio)
@@ -145,16 +118,17 @@ class GeneticSymbolicRegressor:
         offsprings = list()
         operators = self.unary_operators + self.binary_operators
         for parent1, parent2 in parents:
-            offspring1, offspring2 = perform_crossover(
-                parent1,
-                parent2,
-                operators,
-                self.variables,
-                self.max_individual_depth,
-                self.crossover_retries
-            )
-            offsprings.append(offspring1)
-            offsprings.append(offspring2)
+            if random.random() < self.prob_crossover:
+                offspring1, offspring2 = perform_crossover(
+                    parent1,
+                    parent2,
+                    operators,
+                    self.variables,
+                    self.max_individual_depth,
+                    self.crossover_retries
+                )
+                offsprings.append(offspring1)
+                offsprings.append(offspring2)
         return offsprings
 
     def _calculate_loss(self, individuals: List[dict], X: np.ndarray, y: np.ndarray) -> List[dict]:
@@ -235,9 +209,11 @@ class GeneticSymbolicRegressor:
                 break
 
             elite_individuals = self._perform_elitism(individuals)
-            parents1 = self._perform_tournament_selection(individuals)
-            parents2 = self._perform_tournament_selection(individuals)
-            offsprings = self._perform_crossover(zip(parents1, parents2))
+            parent_pairs = perform_tournament_selection(individuals, self.tournament_size)
+            offsprings = self._perform_crossover(parent_pairs)
+
+            # CHECK SCORE STOP CRITERIA AFTER CROSSOVER, BEFORE MUTATION
+
             offsprings = self._perform_mutation(offsprings)
             individuals = self._prepare_next_epoch_individual(offsprings, elite_individuals)
             individuals = self._calculate_loss(individuals, X, y)
@@ -249,6 +225,6 @@ class GeneticSymbolicRegressor:
             self.search_results.extract_summary_statistics_from_individuals(individuals, generation)
             self.search_results.visualize_best_in_generation()
 
-        self.search_results.plot_evolution_per_complexity()
-        self.search_results.plot_evolution()
+        #self.search_results.plot_evolution_per_complexity()
+        #self.search_results.plot_evolution()
 

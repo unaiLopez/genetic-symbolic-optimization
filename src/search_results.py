@@ -14,6 +14,7 @@ class SearchResults:
         self.best_by_loss_complexity_per_epoch = list()
         self.best_by_loss_complexity = None
         self.df_summary_statistics = pd.DataFrame()
+        self.best_individual = None
 
     def add_best_individuals_by_loss_and_complexity(self, individuals: List[Any], generation: int) -> None:
         epoch_results = list()
@@ -52,6 +53,7 @@ class SearchResults:
             self.best_by_loss_complexity.loc[:, "current_generation"] = generation
         
         self.best_by_loss_complexity_per_epoch.append(self.best_by_loss_complexity)
+        self.best_individual = individuals[0]
 
     def visualize_best_in_generation(self):
         if platform.system() == "Windows":

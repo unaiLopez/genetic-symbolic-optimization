@@ -6,7 +6,6 @@ sys.path.append(os.path.abspath(os.curdir))
 import numpy as np
 import pandas as pd
 
-from src.operations import *
 from src.genetic_symbolic_regressor import GeneticSymbolicRegressor
 
 
@@ -53,30 +52,35 @@ X = pd.DataFrame({
 #y_values = (X["x0"].values**2 - 1) / X["x1"].values ** 2
 #y = pd.Series(y_values)
 
-variables, X, y = generate_hooks_law_data()
-#variables, X, y = generate_newtons_law_data()
+#variables, X, y = generate_hooks_law_data()
+variables, X, y = generate_newtons_law_data()
 
-unary_operators = []#["exp", "abs", "log", "sin", "cos", "tan", "**0", "**2", "**3", "**-1", "**-2", "**-3"]   #CUANDO SOLO HAY UN OPERADOR FALLA LA MUTACION
+unary_operators =  ["exp", "abs", "log", "sin", "cos", "tan", "**0", "**2", "**3", "**-1", "**-2", "**-3"]   #CUANDO SOLO HAY UN OPERADOR FALLA LA MUTACION
 binary_operators = ["+", "-", "*", "**", "/"]
 
-# LA MEJOR ECUACION TIENE QUE SER LA DE MAYOR SCORE Y MENOR COMPLEXITY REVISAR ESO
-model = GeneticSymbolicRegressor(
-    num_individuals_per_epoch=5000,
-    max_individual_depth=5,
-    variables=variables,
-    unary_operators=unary_operators,
-    binary_operators=binary_operators,
-    prob_node_mutation=0.01,
-    prob_crossover=0.05,
-    crossover_retries=3,
-    tournament_ratio=0.7,
-    elitism_ratio=0.01,
-    timeout=600,
-    stop_score=0.99,
-    max_generations=200,
-    verbose=1,
-    loss_name="mse",
-    score_name="r2",
-    random_state=None
-)
-model.fit(X, y)
+for i in range(10):
+    # LA MEJOR ECUACION TIENE QUE SER LA DE MAYOR SCORE Y MENOR COMPLEXITY REVISAR ESO
+    model = GeneticSymbolicRegressor(
+        num_individuals_per_epoch=1000,
+        max_individual_depth=5,
+        variables=variables,
+        unary_operators=unary_operators,
+        binary_operators=binary_operators,
+        prob_node_mutation=0.02,
+        prob_crossover=0.8,
+        crossover_retries=3,
+        tournament_size=100,
+        elitism_ratio=0.01,
+        timeout=600,
+        stop_score=0.99,
+        max_generations=1000,
+        verbose=1,
+        loss_name="mse",
+        score_name="r2",
+        random_state=None
+    )
+    model.fit(X, y)
+
+    with open(f"best_individual_newtons_law_{i}.txt", "w") as f:
+        f.write(str(model.search_results.best_individual))
+        

@@ -164,9 +164,9 @@ def calculate_score(
     try:
         score = score_function(y, eval(executable_equation))
     except:
-        score = np.inf
+        score = -np.inf
     if math.isinf(score) or math.isnan(score):
-        score = 0
+        score = -np.inf
     return float(score)
 
 def visualize_binary_tree(node: List[Any], variables: List[str]) -> None:

@@ -4,7 +4,7 @@ from typing import List, Tuple, Any
 
 def _get_best_in_tournament(individuals: List[Any], tournament_size: int) -> List[Any]:
     tournament = random.sample(individuals, tournament_size)
-    return max(tournament, key=lambda individual: individual[2])    #BY SCORE
+    return max(tournament, key=lambda individual: individual[2])
 
 def _select_parents(individuals: List[Any], tournament_size: int, num_parents: int) -> List[Any]:
     parents = []

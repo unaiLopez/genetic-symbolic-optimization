@@ -1,5 +1,6 @@
 import os
 import sys
+import math
 import time
 import random
 import logging
@@ -77,9 +78,6 @@ class GeneticSymbolicRegressor:
         if self.timeout is not None:
             if self.timeout < 0.0:
                 raise ValueError("Timeout should be bigger than 0")
-        if self.stop_score is not None:
-            if self.stop_score < -1.0 or self.stop_score > 1.0:
-                raise ValueError("Stop score should be between -1.0 and 1.0")
 
     def _create_individuals(self, num_individuals: int) -> List[dict]:
         individuals = list()
@@ -137,6 +135,11 @@ class GeneticSymbolicRegressor:
             individuals[i][2] = calculate_score(X, y, self.score_function, individuals[i][6])
         return individuals
     
+    def _sort_by_score(self, individuals: List[Any]) -> List[Any]:
+        individuals.sort(key=lambda individual: individual[2], reverse=True)
+
+        return individuals
+    
     def _prepare_next_epoch_individual(self, offsprings: List[dict], elite_individuals: List[dict]) -> List[dict]:
         new_individuals = self._create_individuals(self.num_individuals_per_epoch - len(offsprings) - len(elite_individuals))
         return (
@@ -182,6 +185,7 @@ class GeneticSymbolicRegressor:
         individuals = self._create_individuals(self.num_individuals_per_epoch)
         individuals = self._calculate_loss(individuals, X, y)
         individuals = self._calculate_score(individuals, X, y)
+        individuals = self._sort_by_score(individuals)
         
         self.search_results.add_best_individuals_by_loss_and_complexity(individuals, 0)
         #self.search_results.extract_summary_statistics_from_individuals(individuals, 0)
@@ -202,17 +206,15 @@ class GeneticSymbolicRegressor:
             if stop_timeout_criteria or stop_score_criteria or stop_max_generations_criteria:
                 if self.verbose >= 1: logger.info('STOPPING OPTIMIZATION...')
                 break
-
+            
             elite_individuals = self._perform_elitism(individuals)
             parent_pairs = perform_tournament_selection(individuals, self.tournament_size)
             offsprings = self._perform_crossover(parent_pairs)
-
-            # CHECK SCORE STOP CRITERIA AFTER CROSSOVER, BEFORE MUTATION
-
             offsprings = self._perform_mutation(offsprings)
             individuals = self._prepare_next_epoch_individual(offsprings, elite_individuals)
             individuals = self._calculate_loss(individuals, X, y)
             individuals = self._calculate_score(individuals, X, y)
+            individuals = self._sort_by_score(individuals)
             best_individual = individuals[0]
 
             self.search_results.add_best_individuals_by_loss_and_complexity(individuals, generation)

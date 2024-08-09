@@ -1,0 +1,21 @@
+formula,trial,score,loss,equation,search_duration
+hooks_law,0.0,1.0,0.0,"(np.multiply((np.subtract(current_length, original_length)), k))",0.5292177200317383
+hooks_law,1.0,1.0,0.0,"(np.abs((np.multiply((np.subtract((np.abs(original_length)), current_length)), k))))",19.303409099578857
+hooks_law,2.0,0.9999995505307985,0.12702323191629974,"(np.multiply((power_minus1((np.sin((np.sin((power_minus1(k)))))))), (np.subtract(current_length, (np.divide(original_length, (power_0(original_length))))))))",288.1143593788147
+hooks_law,3.0,0.9995187954415079,135.99187223153328,"(np.add((np.add((np.log(k)), (np.exp((np.cos(current_length)))))), (np.multiply((np.add((np.abs(k)), (np.cos((power_3(current_length)))))), (np.subtract(current_length, (np.abs(original_length))))))))",83.63360810279846
+hooks_law,4.0,1.0,0.0,"(np.multiply((np.subtract(current_length, (np.abs(original_length)))), k))",9.96373701095581
+hooks_law,5.0,0.5700214973541724,121515.02009322609,"(np.divide(k, (np.sin((power_minus1((np.log((power_3(current_length))))))))))",600.1716516017914
+hooks_law,6.0,1.0,0.0,"(np.multiply((np.divide((np.subtract(current_length, original_length)), (power_2((power_0((power_minus3(k)))))))), k))",12.763201475143433
+hooks_law,7.0,1.0,0.0,"(np.multiply(k, (np.subtract(current_length, original_length))))",89.63943648338318
+hooks_law,8.0,0.5549771226290217,125766.66868906887,"(power_minus1((np.power((np.divide((power_minus3(k)), (np.add((power_0(current_length)), (power_minus1(original_length)))))), (np.cos((np.add((power_0(current_length)), (power_minus1(current_length))))))))))",600.6936187744141
+hooks_law,9.0,1.0,0.0,"(np.multiply(k, (np.subtract(current_length, original_length))))",526.3071961402893
+newtons_universal_law_of_gravity,0.0,0.9686275175109202,5.4706170432588085e+44,"(np.multiply(r_distance_from_sun, (np.divide((np.power(r_distance_from_sun, (np.cos((np.tan(r_distance_from_sun)))))), (np.cos((np.cos((np.tan(r_distance_from_sun))))))))))",532.9095964431763
+newtons_universal_law_of_gravity,1.0,0.9137544231141774,1.5039183557804202e+45,"(np.multiply((np.tan((np.tan((power_minus2((np.log(M_sun)))))))), m_planets))",244.2206425666809
+newtons_universal_law_of_gravity,2.0,0.9691751796729245,5.375117748344818e+44,"(np.power((np.multiply((np.exp((np.tan(r_distance_from_sun)))), r_distance_from_sun)), (np.add((np.cos((np.tan((np.sin(r_distance_from_sun)))))), (power_0((power_minus2((np.tan(m_planets))))))))))",341.3445496559143
+newtons_universal_law_of_gravity,3.0,0.9159345873107528,1.4659014617872855e+45,"(np.divide((np.subtract(m_planets, (power_2((np.abs(r_distance_from_sun)))))), (np.multiply((np.log((power_2((np.abs(r_distance_from_sun)))))), (np.log((power_3(r_distance_from_sun))))))))",351.77996039390564
+newtons_universal_law_of_gravity,4.0,0.9137544230827943,1.5039183563276675e+45,"(np.divide((np.exp((power_minus1((power_minus1((np.log(m_planets)))))))), (power_2((np.log((np.exp((np.log(M_sun))))))))))",276.3477113246918
+newtons_universal_law_of_gravity,5.0,0.9573146537996954,7.443312224401492e+44,"(np.divide(m_planets, (np.multiply((power_3((np.log(m_planets)))), (power_3((np.abs((np.tan(r_distance_from_sun))))))))))",268.31277108192444
+newtons_universal_law_of_gravity,6.0,0.9137544231141774,1.5039183557804202e+45,"(np.multiply(m_planets, (np.tan((np.tan((power_minus2((np.log(M_sun))))))))))",231.1708540916443
+newtons_universal_law_of_gravity,7.0,0.9852255255298812,2.5763180159414624e+44,"(np.power((np.add((np.subtract((np.cos((np.log(G)))), (np.power(M_sun, G)))), (np.divide((np.abs((np.log(r_distance_from_sun)))), (np.abs((np.tan(r_distance_from_sun)))))))), (np.tan(M_sun))))",360.6644878387451
+newtons_universal_law_of_gravity,8.0,0.9381618034668711,1.0783115170955216e+45,"(np.multiply((np.divide((power_0(r_distance_from_sun)), (power_3((np.log(r_distance_from_sun)))))), (np.divide(m_planets, (np.tan(r_distance_from_sun))))))",265.6829752922058
+newtons_universal_law_of_gravity,9.0,0.9137544230984854,1.5039183560540512e+45,"(np.multiply((np.tan((power_minus1((power_2((np.log(M_sun)))))))), m_planets))",203.1920130252838

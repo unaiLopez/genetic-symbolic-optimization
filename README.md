@@ -21,3 +21,7 @@
   - BIC = n⋅ln(σ^2) + k⋅ln(n)
   - AIC = n⋅ln(RSS / n​) + 2⋅k
   - Weighted_IC = α⋅AIC+(1 − α)⋅BIC
+
+- Divide and conquer approach
+  - Generate a big subset of subexpressions
+  - After generating a big subset of subexpressions (individuals), go to second stage. Search for combinations between them (Genetic Algorithms)

@@ -89,6 +89,8 @@ if __name__ == "__main__":
                 timeout=600,
                 stop_score=0.999,
                 max_generations=1000,
+                frequencies_learning_rate=0.3,
+                warmup_generations=10000,
                 verbose=1,
                 loss_name="mse",
                 score_name="r2",

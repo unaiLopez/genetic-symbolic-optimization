@@ -1,0 +1,21 @@
+formula,trial,score,loss,equation,search_duration
+newtons_universal_law_of_gravity,0.0,1.0,9.866956380601057e+17,"(np.multiply((np.multiply((np.multiply((np.multiply(G, r_distance_from_sun)), M_sun)), (np.add(m_planets, r_distance_from_sun)))), (power_minus3(r_distance_from_sun))))",90.99068188667297
+newtons_universal_law_of_gravity,1.0,0.9186890436974898,1.4178702737566882e+45,"(np.power((np.tan((power_minus2((np.abs(r_distance_from_sun)))))), (np.cos((np.divide((np.divide(m_planets, r_distance_from_sun)), (np.abs(r_distance_from_sun))))))))",316.60438299179077
+newtons_universal_law_of_gravity,2.0,0.938536773889913,1.0717729220457833e+45,"(np.power((np.divide(r_distance_from_sun, (np.sin((np.cos(G)))))), (np.add((power_minus3((np.cos(G)))), (np.abs((np.cos(r_distance_from_sun))))))))",587.3251223564148
+newtons_universal_law_of_gravity,3.0,0.9526243654819156,8.261187291125159e+44,"(np.multiply((power_minus3((np.cos((np.cos(r_distance_from_sun)))))), (np.power(m_planets, (np.sin((np.cos(m_planets))))))))",513.593469619751
+newtons_universal_law_of_gravity,4.0,0.9156928513997208,1.4701167628726243e+45,"(np.subtract((np.multiply(G, M_sun)), (np.divide((np.subtract((np.multiply(r_distance_from_sun, r_distance_from_sun)), m_planets)), (power_2((np.log(M_sun))))))))",393.20157122612
+newtons_universal_law_of_gravity,5.0,1.0,567382359670784.0,"(np.add((np.divide((np.subtract((np.tan(G)), (np.sin(G)))), (np.multiply((power_minus2(G)), m_planets)))), (np.divide((np.add(M_sun, (np.divide(m_planets, M_sun)))), (np.multiply((np.divide(r_distance_from_sun, m_planets)), (np.divide(r_distance_from_sun, G))))))))",14.178738117218018
+newtons_universal_law_of_gravity,6.0,0.8755591667493561,2.1699530583697464e+45,"(np.power(m_planets, (np.sin((np.divide(M_sun, G))))))",373.09273195266724
+newtons_universal_law_of_gravity,7.0,0.9137544230984854,1.5039183560540512e+45,"(np.multiply((np.tan((power_minus2((np.log(M_sun)))))), m_planets))",140.9984645843506
+newtons_universal_law_of_gravity,8.0,0.9678930158377245,5.598696718594844e+44,"(np.power((np.add((np.add((np.log(M_sun)), (np.abs(r_distance_from_sun)))), (np.add((np.log(M_sun)), (np.abs(r_distance_from_sun)))))), (np.add((np.cos((np.sin(r_distance_from_sun)))), (np.cos((np.sin(r_distance_from_sun))))))))",231.12311005592346
+newtons_universal_law_of_gravity,9.0,0.6839029208456149,5.5119835325375613e+45,"(np.divide((power_minus1((power_2(G)))), (power_2((np.tan((np.log(m_planets))))))))",136.18581652641296
+hooks_law,0.0,1.0,0.0,"(np.multiply((np.abs(k)), (np.subtract(current_length, original_length))))",7.555512189865112
+hooks_law,1.0,1.0,0.0,"(np.multiply(k, (np.subtract(current_length, original_length))))",20.59418559074402
+hooks_law,2.0,1.0,5.263911048358767e-28,"(np.multiply((np.divide((np.divide((np.subtract(current_length, original_length)), (np.abs(k)))), (np.multiply((power_0(k)), original_length)))), (np.divide(original_length, (np.multiply((power_minus3(k)), (np.abs(k))))))))",42.86471652984619
+hooks_law,3.0,1.0,0.0,"(np.multiply((np.subtract(current_length, original_length)), k))",33.81962871551514
+hooks_law,4.0,1.0,1.5095642282309283e-28,"(np.divide((np.subtract(current_length, original_length)), (power_minus1(k))))",2.6591126918792725
+hooks_law,5.0,1.0,0.0,"(np.multiply(k, (np.subtract(current_length, original_length))))",149.73316025733948
+hooks_law,6.0,0.5740408467892384,2606.895074040313,"(np.add((np.add((np.subtract((power_2(k)), original_length)), (np.log((np.add(current_length, current_length)))))), (np.add((np.log((np.add(current_length, current_length)))), (np.add((np.cos(current_length)), (np.add(current_length, k))))))))",219.4806249141693
+hooks_law,7.0,1.0,0.0,"(np.multiply((np.subtract(current_length, original_length)), k))",13.244558572769165
+hooks_law,8.0,0.9998366028777098,1.0000000000000064,"(np.divide((np.subtract((power_minus1(k)), (np.subtract(original_length, (np.abs(current_length)))))), (power_minus1(k))))",8.118998050689697
+hooks_law,9.0,0.9998146307958888,1.1344704332179119,"(np.add((np.multiply(k, (np.subtract(current_length, original_length)))), (np.power((np.add((np.add(k, k)), k)), (np.divide((np.cos(k)), k))))))",4.492966890335083

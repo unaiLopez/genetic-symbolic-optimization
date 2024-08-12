@@ -19,14 +19,17 @@ class AdamOptimizer:
         self.t += 1
         lr_t = self.lr * np.sqrt(1 - self.beta2 ** self.t) / (1 - self.beta1 ** self.t)
 
-        for i, param in enumerate(self.params):
+        for i in range(len(self.params)):
             self.m[i] = self.beta1 * self.m[i] + (1 - self.beta1) * grads[i]
             self.v[i] = self.beta2 * self.v[i] + (1 - self.beta2) * (grads[i] ** 2)
             
             m_hat = self.m[i] / (1 - self.beta1 ** self.t)
             v_hat = self.v[i] / (1 - self.beta2 ** self.t)
             
-            param -= lr_t * m_hat / (np.sqrt(v_hat) + self.eps)
+            self.params[i] -= lr_t * m_hat / (np.sqrt(v_hat) + self.eps)
+            # normalize params between 0 and 1
+            self.params = np.divide(np.subtract(self.params, np.min(self.params)), np.subtract(np.max(self.params), np.min(self.params)))
+        
 
 # Example usage
 # Initialize parameters (weights) and gradients

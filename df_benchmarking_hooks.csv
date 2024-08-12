@@ -1,0 +1,11 @@
+formula,trial,score,loss,equation,search_duration
+hooks_law,0.0,0.999863598329767,0.5808636561856485,"(np.subtract((np.sin((power_2((power_2(k)))))), (np.multiply((np.subtract(original_length, current_length)), k))))",49.40876626968384
+hooks_law,1.0,1.0,0.0,"(np.multiply(k, (np.subtract(current_length, original_length))))",7.906656265258789
+hooks_law,2.0,1.0,0.0,"(np.multiply(k, (np.add((np.add((np.subtract(original_length, original_length)), (np.subtract(current_length, original_length)))), (np.divide((np.subtract(original_length, original_length)), current_length))))))",2.2857627868652344
+hooks_law,3.0,1.0,0.0,"(np.multiply((np.subtract(current_length, original_length)), k))",10.961854696273804
+hooks_law,4.0,1.0,0.0,"(np.multiply((np.abs(k)), (np.subtract(current_length, original_length))))",0.6470470428466797
+hooks_law,5.0,1.0,0.0,"(np.abs((np.multiply(k, (np.subtract(current_length, original_length))))))",5.186479330062866
+hooks_law,6.0,1.0,0.0,"(np.multiply(k, (np.subtract(current_length, original_length))))",5.519059419631958
+hooks_law,7.0,0.999991685323575,0.035407875431543064,"(np.multiply((np.multiply(k, (np.subtract(current_length, original_length)))), (np.power(current_length, (power_minus2(current_length))))))",2.225132703781128
+hooks_law,8.0,0.9999781886124224,0.09288333722879387,"(np.multiply((np.add((power_minus3(original_length)), (np.subtract(original_length, current_length)))), (np.subtract((power_minus1((np.add(current_length, k)))), k))))",33.83887767791748
+hooks_law,9.0,1.0,9.341236455745815e-26,"(np.subtract((np.multiply(current_length, k)), (np.multiply(k, original_length))))",53.48268127441406

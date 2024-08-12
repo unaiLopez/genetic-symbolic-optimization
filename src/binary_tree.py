@@ -38,7 +38,18 @@ def _calculate_max_depth(node: List[Any]) -> int:
     right_depth = _calculate_max_depth(node[2]) if node[2] else 0
     return max(left_depth, right_depth) + 1
 
-def _build_equation(node: dict, operators: List[str]) -> str:
+def count_symbols_frequency(node: List[Any], symbols: List[str], symbol_counts: dict = None) -> dict:
+    if symbol_counts is None:
+        symbol_counts = {symbol: 0 for symbol in symbols}
+    symbol_counts[node[0]] += 1
+    if node[1]:
+        symbol_counts = count_symbols_frequency(node[1], symbols, symbol_counts)
+    if node[2]:
+        symbol_counts = count_symbols_frequency(node[2], symbols, symbol_counts)
+    
+    return symbol_counts
+
+def _build_equation(node: List[Any], operators: List[str]) -> str:
     if node[0] in operators:
         operation = str(OPERATIONS[node[0]])
     else:
@@ -83,27 +94,39 @@ def _build_tree(
     parent: list,
     variables: List[str],
     unary_operators: List[str],
-    binary_operators: List[str]) -> dict:
+    binary_operators: List[str],
+    unary_operators_frequencies: List[float] = None,
+    binary_operators_frequencies: List[float] = None,
+    variables_frequencies: List[float] = None) -> List[Any]:
 
+    if unary_operators_frequencies is None or binary_operators_frequencies is None or variables_frequencies is None:
+        has_weights = False
+    else:
+        has_weights = True
+        
     if depth < 1:
         raise ValueError("Depth must be at least 1")
 
     if depth == 1:
-        node_value = random.choice(variables)
+        if has_weights:
+            node_value = random.choices(variables, weights=variables_frequencies)[0]
+        else:
+            node_value = random.choices(variables)[0]
+
         return [node_value, None, None]
     else:
-        if depth > 2:
-            node_value = random.choice(binary_operators + unary_operators + variables)
-        elif depth == 2:
-            node_value = random.choice(unary_operators + variables)
+        if has_weights:
+            node_value = random.choices(binary_operators + unary_operators + variables, weights=unary_operators_frequencies + binary_operators_frequencies + variables_frequencies)[0]
+        else:
+            node_value = random.choices(binary_operators + unary_operators + variables)[0]
 
         node = [node_value, None, None]
                 
         if node_value in unary_operators:
-            node[2] = _build_tree(depth - 1, node, variables, unary_operators, binary_operators)
+            node[2] = _build_tree(depth - 1, node, variables, unary_operators, binary_operators, unary_operators_frequencies, binary_operators_frequencies, variables_frequencies)
         elif node_value in binary_operators:
-            node[1] = _build_tree(depth - 1, node, variables, unary_operators, binary_operators)
-            node[2] = _build_tree(depth - 1, node, variables, unary_operators, binary_operators)
+            node[1] = _build_tree(depth - 1, node, variables, unary_operators, binary_operators, unary_operators_frequencies, binary_operators_frequencies, variables_frequencies)
+            node[2] = _build_tree(depth - 1, node, variables, unary_operators, binary_operators, unary_operators_frequencies, binary_operators_frequencies, variables_frequencies)
 
         return node    
 
@@ -111,7 +134,10 @@ def build_full_binary_tree(
     max_initialization_depth: int,
     variables: List[str],
     unary_operators: List[str],
-    binary_operators: List[str]) -> dict:
+    binary_operators: List[str],
+    unary_operators_frequencies: List[float] = None,
+    binary_operators_frequencies: List[float] = None,
+    variables_frequencies: List[float] = None) -> dict:
 
     full_binary_tree = [
         max_initialization_depth,                       #max_initialization_depth
@@ -129,7 +155,10 @@ def build_full_binary_tree(
         [],
         variables,
         unary_operators,
-        binary_operators
+        binary_operators,
+        unary_operators_frequencies,
+        binary_operators_frequencies,
+        variables_frequencies
     )
     full_binary_tree.append(tree)
     full_binary_tree = update_tree_info(

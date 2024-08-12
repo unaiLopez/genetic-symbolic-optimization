@@ -19,7 +19,8 @@ from src.crossover import perform_crossover
 from src.search_results import SearchResults
 from src.mutation import perform_node_mutation
 from src.tournament import perform_tournament_selection
-from src.binary_tree import build_full_binary_tree, calculate_loss, calculate_score
+from src.diversity import unique_individuals_ratio
+from src.binary_tree import build_full_binary_tree, calculate_loss, calculate_score, count_symbols_frequency
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('GeneticSymbolicRegressor')
@@ -40,6 +41,8 @@ class GeneticSymbolicRegressor:
         timeout: Optional[int],
         stop_score: Optional[float],
         max_generations: Optional[int] = 50,
+        frequencies_learning_rate: Optional[float] = 0.3,
+        warmup_generations: int = 100,
         verbose: Optional[int] = 1,
         loss_name: Optional[str] = "mae",
         score_name: Optional[str] = "r2",
@@ -59,12 +62,14 @@ class GeneticSymbolicRegressor:
         self.score_name = score_name
         self.loss_function = get_loss_function(loss_name)
         self.score_function = get_score_function(score_name)
+        self.frequencies_learning_rate = frequencies_learning_rate
+        self.warmup_generations = warmup_generations
         self.max_generations = max_generations
         self.timeout = timeout
         self.stop_score = stop_score
         self.verbose = verbose
         self.search_results = SearchResults()
-
+        self.symbol_frequencies = [1 / (len(self.unary_operators) + len(self.binary_operators) + len(self.variables))] * (len(self.unary_operators) + len(self.binary_operators) + len(self.variables))
         random.seed(random_state)
         np.random.seed(random_state)
 
@@ -79,7 +84,13 @@ class GeneticSymbolicRegressor:
             if self.timeout < 0.0:
                 raise ValueError("Timeout should be bigger than 0")
 
-    def _create_individuals(self, num_individuals: int) -> List[dict]:
+    def _create_individuals(
+        self,
+        num_individuals: int,
+        unary_operators_frequencies: List[float] = None,
+        binary_operators_frequencies: List[float] = None,
+        variables_frequencies: List[float] = None) -> List[dict]:
+
         individuals = list()
         for _ in range(num_individuals):
             individuals.append(
@@ -87,7 +98,10 @@ class GeneticSymbolicRegressor:
                     max_initialization_depth=self.max_individual_depth,
                     variables=self.variables,
                     unary_operators=self.unary_operators,
-                    binary_operators=self.binary_operators
+                    binary_operators=self.binary_operators,
+                    unary_operators_frequencies=unary_operators_frequencies,
+                    binary_operators_frequencies=binary_operators_frequencies,
+                    variables_frequencies=variables_frequencies
                 )
             )
         return individuals
@@ -140,8 +154,15 @@ class GeneticSymbolicRegressor:
 
         return individuals
     
-    def _prepare_next_epoch_individual(self, offsprings: List[dict], elite_individuals: List[dict]) -> List[dict]:
-        new_individuals = self._create_individuals(self.num_individuals_per_epoch - len(offsprings) - len(elite_individuals))
+    def _prepare_next_epoch_individual(
+        self,
+        offsprings: List[dict],
+        elite_individuals: List[dict],
+        unary_operators_frequencies: List[float] = None,
+        binary_operators_frequencies: List[float] = None,
+        variables_frequencies: List[float] = None) -> List[dict]:
+
+        new_individuals = self._create_individuals(self.num_individuals_per_epoch - len(offsprings) - len(elite_individuals), unary_operators_frequencies, binary_operators_frequencies, variables_frequencies)
         return (
             elite_individuals +
             offsprings +
@@ -176,6 +197,39 @@ class GeneticSymbolicRegressor:
         else:
             return False
     
+    def _check_warmup_generations_finished(self, generation: int) -> bool:
+        if generation > self.warmup_generations:
+            return True
+        else:
+            return False
+
+    def _get_updated_frequencies(self, individuals: List[Any], best_k_individuals: int) -> Tuple[List[float], List[float], List[float]]:
+        symbols = self.unary_operators + self.binary_operators + self.variables
+        total_symbols_frequency = None
+        for individual in individuals[:best_k_individuals]:
+            total_symbols_frequency = count_symbols_frequency(individual[-1], symbols, total_symbols_frequency)
+
+        frequencies = []
+        for key, value in total_symbols_frequency.items():
+            frequencies.append(value)
+        frequencies = np.divide(frequencies, np.sum(frequencies)).tolist()
+        gradients = np.subtract(self.symbol_frequencies, frequencies)
+        new_frequencies = np.subtract(self.symbol_frequencies, np.multiply(self.frequencies_learning_rate, gradients)).tolist()
+
+        # CALCULATE FREQUENCIES AND UPDATE THEM AT NODE LEVEL
+        # TRY JUST GETTING THE UNIQUE INDIVIDUALS FREQUENCIES
+        # ADD SOME WARMUP GENERATIONS BEFORE STARTING TO UPDATE THE FREQUENCIES
+        # DO CLIPING OF THE FREQUENCIES IN A LOT OF CASES THE FREQUENCIES HAVE VANISHING GRADIENTS AND ARE PRACTICALLY 0 (E.g. 1e-100)
+        self.symbol_frequencies = new_frequencies
+        print(symbols)
+        print(self.symbol_frequencies)
+
+        unary_operators_frequencies = new_frequencies[:len(self.unary_operators)]
+        binary_operators_frequencies = new_frequencies[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)]
+        variables_frequencies = new_frequencies[:len(self.variables)]
+
+        return unary_operators_frequencies, binary_operators_frequencies, variables_frequencies
+    
     def fit(self, X: np.ndarray, y: np.ndarray):
         if X.size == 0 or y.size == 0:
             raise ValueError(f"X and y shouldn't be empty.")
@@ -186,7 +240,7 @@ class GeneticSymbolicRegressor:
         individuals = self._calculate_loss(individuals, X, y)
         individuals = self._calculate_score(individuals, X, y)
         individuals = self._sort_by_score(individuals)
-        
+
         self.search_results.add_best_individuals_by_loss_and_complexity(individuals, 0)
         #self.search_results.extract_summary_statistics_from_individuals(individuals, 0)
         self.search_results.visualize_best_in_generation()
@@ -207,20 +261,37 @@ class GeneticSymbolicRegressor:
                 if self.verbose >= 1: logger.info('STOPPING OPTIMIZATION...')
                 break
             
+            if self._check_warmup_generations_finished(generation):
+                ratio_unique_individuals = unique_individuals_ratio(individuals)
+                print("RATIO")
+                print(ratio_unique_individuals)
+                if ratio_unique_individuals <= 0.2:
+                    print("NO HAY DIVERSIDAD")
+                    self.prob_node_mutation = 0.2
+                else:
+                    self.prob_node_mutation = 0.025
+                print(self.prob_node_mutation)
+
+                unary_operators_frequencies, binary_operators_frequencies, variables_frequencies = self._get_updated_frequencies(individuals, 100)
+            else:
+                unary_operators_frequencies = None
+                binary_operators_frequencies = None 
+                variables_frequencies = None
+
             elite_individuals = self._perform_elitism(individuals)
             parent_pairs = perform_tournament_selection(individuals, self.tournament_size)
             offsprings = self._perform_crossover(parent_pairs)
             offsprings = self._perform_mutation(offsprings)
-            individuals = self._prepare_next_epoch_individual(offsprings, elite_individuals)
+            individuals = self._prepare_next_epoch_individual(offsprings, elite_individuals, unary_operators_frequencies, binary_operators_frequencies, variables_frequencies)
             individuals = self._calculate_loss(individuals, X, y)
             individuals = self._calculate_score(individuals, X, y)
             individuals = self._sort_by_score(individuals)
+
             best_individual = individuals[0]
 
             self.search_results.add_best_individuals_by_loss_and_complexity(individuals, generation)
             #self.search_results.extract_summary_statistics_from_individuals(individuals, generation)
             self.search_results.visualize_best_in_generation()
-
         #self.search_results.plot_evolution_per_complexity()
         #self.search_results.plot_evolution()
 

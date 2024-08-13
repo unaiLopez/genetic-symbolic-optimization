@@ -67,7 +67,7 @@ if __name__ == "__main__":
         "search_duration": []
     })
 
-    for formula_name in ["hooks_law", "newtons_universal_law_of_gravity"]:
+    for formula_name in ["newtons_universal_law_of_gravity", "hooks_law"]:
         if formula_name == "newtons_universal_law_of_gravity":
             variables, X, y = generate_newtons_law_data()
         else:
@@ -89,7 +89,7 @@ if __name__ == "__main__":
                 timeout=600,
                 stop_score=0.999,
                 max_generations=1000,
-                frequencies_learning_rate=0.3,
+                frequencies_learning_rate=0.01,
                 warmup_generations=50,
                 verbose=1,
                 loss_name="mse",

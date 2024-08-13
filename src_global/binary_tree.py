@@ -104,18 +104,13 @@ def _build_tree(
 
     if depth == 1:
         if has_weights:
-            #print(variables_frequencies)
-            if np.sum(variables_frequencies) <= 0:
-                node_value = random.choices(variables)[0]
-            else:
-                node_value = random.choices(variables, weights=variables_frequencies)[0]
+            node_value = random.choices(variables, weights=variables_frequencies)[0]
         else:
             node_value = random.choices(variables)[0]
 
         return [node_value, None, None]
     else:
         if has_weights:
-            #print(unary_operators_frequencies + binary_operators_frequencies + variables_frequencies)
             node_value = random.choices(binary_operators + unary_operators + variables, weights=unary_operators_frequencies + binary_operators_frequencies + variables_frequencies)[0]
         else:
             node_value = random.choices(binary_operators + unary_operators + variables)[0]

@@ -35,7 +35,7 @@ class GeneticSymbolicRegressor:
         timeout: Optional[int],
         stop_score: Optional[float],
         max_generations: Optional[int] = 50,
-        frequencies_learning_rate: Optional[float] = 0.001,
+        frequencies_learning_rate: Optional[float] = 0.1,
         warmup_generations: int = 100,
         verbose: Optional[int] = 1,
         loss_name: Optional[str] = "mae",
@@ -66,9 +66,9 @@ class GeneticSymbolicRegressor:
         self.search_results = SearchResults()
 
         self.num_symbols = (len(self.unary_operators) + len(self.binary_operators) + len(self.variables))
-        self.frequency_t = np.full((self.num_individuals_per_epoch, self.num_symbols), 1.0 / self.num_symbols)
+        self.frequency_t = np.full(self.num_symbols, 1.0 / self.num_symbols)
         self.frequency_t_minus_1 = None
-        self.optimizer = AdamOptimizer(frequencies=self.frequency_t, lr=frequencies_learning_rate)
+        self.optimizer = AdamOptimizer(frequencies=self.frequency_t, lr=self.frequencies_learning_rate)
         
         random.seed(random_state)
         np.random.seed(random_state)
@@ -87,36 +87,23 @@ class GeneticSymbolicRegressor:
     def _create_individuals(
         self,
         num_individuals: int,
-        unary_operators_frequencies: List[List[float]] = None,
-        binary_operators_frequencies: List[List[float]] = None,
-        variables_frequencies: List[List[float]] = None) -> List[dict]:
+        unary_operators_frequencies: List[float] = None,
+        binary_operators_frequencies: List[float] = None,
+        variables_frequencies: List[float] = None) -> List[dict]:
 
         individuals = list()
         for i in range(num_individuals):
-            if unary_operators_frequencies is None or binary_operators_frequencies is None or variables_frequencies is None:
-                individuals.append(
-                    build_full_binary_tree(
-                        max_initialization_depth=self.max_individual_depth,
-                        variables=self.variables,
-                        unary_operators=self.unary_operators,
-                        binary_operators=self.binary_operators,
-                        unary_operators_frequencies=unary_operators_frequencies,
-                        binary_operators_frequencies=binary_operators_frequencies,
-                        variables_frequencies=variables_frequencies
-                    )
+            individuals.append(
+                build_full_binary_tree(
+                    max_initialization_depth=self.max_individual_depth,
+                    variables=self.variables,
+                    unary_operators=self.unary_operators,
+                    binary_operators=self.binary_operators,
+                    unary_operators_frequencies=unary_operators_frequencies,
+                    binary_operators_frequencies=binary_operators_frequencies,
+                    variables_frequencies=variables_frequencies
                 )
-            else:
-                individuals.append(
-                    build_full_binary_tree(
-                        max_initialization_depth=self.max_individual_depth,
-                        variables=self.variables,
-                        unary_operators=self.unary_operators,
-                        binary_operators=self.binary_operators,
-                        unary_operators_frequencies=unary_operators_frequencies[i],
-                        binary_operators_frequencies=binary_operators_frequencies[i],
-                        variables_frequencies=variables_frequencies[i]
-                    )
-                )
+            )
         return individuals
     
     def _calculate_loss(self, individuals: List[dict], X: np.ndarray, y: np.ndarray) -> List[dict]:
@@ -162,26 +149,22 @@ class GeneticSymbolicRegressor:
         else:
             return False
         
-    def _calculate_policy_gradient(self, fitness: np.ndarray) -> np.ndarray:
-        return fitness[:, np.newaxis] * (self.frequency_t - self.frequency_t_minus_1)
+    def _calculate_policy_gradient(self, mean_fitness: np.ndarray) -> np.ndarray:
+        return mean_fitness * (self.frequency_t - self.frequency_t_minus_1)
     
     def _optimize_frequencies(self, individuals: List[Any]) -> Tuple[List[float], List[float], List[float]]:
         if self.frequency_t_minus_1 is None:
             symbols = self.unary_operators + self.binary_operators + self.variables
-
-            population_frequency = []
-            population_frequency_symbols = [count_symbols_frequency(individual[-1], symbols, None) for individual in individuals]
-            for individual_symbol_frequency in population_frequency_symbols:
-                frequencies = np.array(list(individual_symbol_frequency.values()), dtype=np.float64)
-                frequencies = (frequencies - frequencies.max()) / (frequencies.max() - frequencies.min())
-                frequencies /= frequencies.sum()
-                population_frequency.append(frequencies)
-            population_frequency = np.array(population_frequency)
+            total_symbols_frequency = None
+            for individual in individuals:
+                total_symbols_frequency = count_symbols_frequency(individual[-1], symbols, total_symbols_frequency)
+            population_frequency = np.array(list(total_symbols_frequency.values()), dtype=np.float64)
+            population_frequency /= population_frequency.sum()
 
             self.frequency_t_minus_1 = self.frequency_t.copy()
             self.frequency_t = population_frequency.copy()
         else:
-            population_fitness = np.array([individual[2] for individual in individuals])
+            population_fitness = np.array([individual[2] for individual in individuals]).mean()
             gradients = self._calculate_policy_gradient(population_fitness)
 
             """
@@ -193,20 +176,16 @@ class GeneticSymbolicRegressor:
 
             
             """
-            print("GRADIENTS")
-            print(gradients)
             
             self.frequency_t_minus_1 = self.frequency_t.copy()
             self.optimizer.step(gradients)
             self.frequency_t = self.optimizer.frequencies.copy()
 
-        unary_operators_frequencies = []
-        binary_operators_frequencies = []
-        variables_frequencies = []
-        for my_new_frequency in self.frequency_t.tolist():
-            unary_operators_frequencies.append(my_new_frequency[:len(self.unary_operators)])
-            binary_operators_frequencies.append(my_new_frequency[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)])
-            variables_frequencies.append(my_new_frequency[-len(self.variables):])
+        new_frequency = self.frequency_t.tolist()
+        unary_operators_frequencies = new_frequency[:len(self.unary_operators)]
+        binary_operators_frequencies = new_frequency[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)]
+        variables_frequencies = new_frequency[-len(self.variables):]
+
         return unary_operators_frequencies, binary_operators_frequencies, variables_frequencies
     
     def fit(self, X: np.ndarray, y: np.ndarray):

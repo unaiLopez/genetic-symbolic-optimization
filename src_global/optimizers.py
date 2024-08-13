@@ -22,7 +22,8 @@ class AdamOptimizer:
     def step(self, grads: np.ndarray) -> np.ndarray:
         self.t += 1
         lr_t = self.lr * np.sqrt(1 - self.beta2 ** self.t) / (1 - self.beta1 ** self.t)
-        
+
+
         self.m = self.beta1 * self.m + (1 - self.beta1) * grads
         self.v = self.beta2 * self.v + (1 - self.beta2) * (grads ** 2)
         
@@ -32,4 +33,5 @@ class AdamOptimizer:
         self.frequencies -= lr_t * m_hat / (np.sqrt(v_hat) + self.eps)
         self.frequencies = (self.frequencies - self.frequencies.max()) / (self.frequencies.max() - self.frequencies.min())
         self.frequencies /= np.sum(self.frequencies)
+        
         return self.frequencies

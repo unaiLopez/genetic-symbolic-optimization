@@ -1,6 +1,5 @@
 import os
 import sys
-import math
 import time
 import random
 import logging
@@ -8,18 +7,13 @@ import logging
 sys.path.append(os.path.abspath(os.curdir))
 
 import numpy as np
-import pandas as pd
 
-from numba import jit
 from typing import List, Tuple, Optional, Union, Any
 
 from src.loss import get_loss_function
+from src.optimizers import AdamOptimizer
 from src.score import get_score_function
-from src.crossover import perform_crossover
 from src.search_results import SearchResults
-from src.mutation import perform_node_mutation
-from src.tournament import perform_tournament_selection
-from src.diversity import unique_individuals_ratio
 from src.binary_tree import build_full_binary_tree, calculate_loss, calculate_score, count_symbols_frequency
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -41,7 +35,7 @@ class GeneticSymbolicRegressor:
         timeout: Optional[int],
         stop_score: Optional[float],
         max_generations: Optional[int] = 50,
-        frequencies_learning_rate: Optional[float] = 0.3,
+        frequencies_learning_rate: Optional[float] = 0.001,
         warmup_generations: int = 100,
         verbose: Optional[int] = 1,
         loss_name: Optional[str] = "mae",
@@ -62,6 +56,7 @@ class GeneticSymbolicRegressor:
         self.score_name = score_name
         self.loss_function = get_loss_function(loss_name)
         self.score_function = get_score_function(score_name)
+        
         self.frequencies_learning_rate = frequencies_learning_rate
         self.warmup_generations = warmup_generations
         self.max_generations = max_generations
@@ -69,7 +64,9 @@ class GeneticSymbolicRegressor:
         self.stop_score = stop_score
         self.verbose = verbose
         self.search_results = SearchResults()
-        self.symbol_frequencies = [1 / (len(self.unary_operators) + len(self.binary_operators) + len(self.variables))] * (len(self.unary_operators) + len(self.binary_operators) + len(self.variables))
+        self.num_symbols = (len(self.unary_operators) + len(self.binary_operators) + len(self.variables))
+        self.current_frequencies = np.full(self.num_symbols, 1.0 / self.num_symbols)
+        self.optimizer = AdamOptimizer(frequencies=self.current_frequencies, lr=frequencies_learning_rate)
         random.seed(random_state)
         np.random.seed(random_state)
 
@@ -106,39 +103,6 @@ class GeneticSymbolicRegressor:
             )
         return individuals
     
-    def _perform_elitism(self, individuals: List[dict]) -> List[dict]:
-        num_elite_individuals = int(len(individuals) * self.elitism_ratio)
-        elite_individuals = individuals[:num_elite_individuals]
-        return [individual for individual in elite_individuals]
-
-    def _perform_mutation(self, individuals: List[dict]) -> List[dict]:
-        for i in range(len(individuals)):
-            individuals[i][-1] = perform_node_mutation(
-                individuals[i][-1],
-                self.prob_node_mutation,
-                self.unary_operators,
-                self.binary_operators,
-                self.variables
-            )
-        return individuals
-    
-    def _perform_crossover(self, parents: Tuple[List[dict], List[dict]]) -> List[dict]:
-        offsprings = list()
-        operators = self.unary_operators + self.binary_operators
-        for parent1, parent2 in parents:
-            if random.random() < self.prob_crossover:
-                offspring1, offspring2 = perform_crossover(
-                    parent1,
-                    parent2,
-                    operators,
-                    self.variables,
-                    self.max_individual_depth,
-                    self.crossover_retries
-                )
-                offsprings.append(offspring1)
-                offsprings.append(offspring2)
-        return offsprings
-
     def _calculate_loss(self, individuals: List[dict], X: np.ndarray, y: np.ndarray) -> List[dict]:
         for i in range(len(individuals)):
             individuals[i][1] = calculate_loss(X, y, self.loss_function, individuals[i][6])
@@ -196,34 +160,35 @@ class GeneticSymbolicRegressor:
                 return False
         else:
             return False
+        
+    def _calculate_policy_gradient(self, mean_fitness: float, current_frequencies: np.ndarray, old_frequencies: np.ndarray):
+
+        return mean_fitness * (current_frequencies - old_frequencies)
+
     
-    def _check_warmup_generations_finished(self, generation: int) -> bool:
-        if generation > self.warmup_generations:
-            return True
-        else:
-            return False
-
-    def _get_updated_frequencies(self, individuals: List[Any], best_k_individuals: int) -> Tuple[List[float], List[float], List[float]]:
+    def _optimize_frequencies(self, individuals: List[Any]) -> Tuple[List[float], List[float], List[float]]:
         symbols = self.unary_operators + self.binary_operators + self.variables
-        total_symbols_frequency = None
-        for individual in individuals[:best_k_individuals]:
-            total_symbols_frequency = count_symbols_frequency(individual[-1], symbols, total_symbols_frequency)
+        individuals_frequency_symbols = [count_symbols_frequency(individual[-1], symbols, None) for individual in individuals] 
 
-        frequencies = []
-        for key, value in total_symbols_frequency.items():
-            frequencies.append(value)
-        frequencies = np.divide(frequencies, np.sum(frequencies)).tolist()
-        gradients = np.subtract(self.symbol_frequencies, frequencies)
-        new_frequencies = np.subtract(self.symbol_frequencies, np.multiply(self.frequencies_learning_rate, gradients)).tolist()
+        individuals_frequencies = np.array([])
+        frequencies = np.array([])
+        for symbols_frequency in individuals_frequency_symbols:
+            for _, value in symbols_frequency.items():
+                frequencies = np.append(frequencies, value)
+            frequencies = np.array(frequencies / np.sum(frequencies))
+        individuals_frequencies = np.concatenate((individuals_frequencies, frequencies))   #ESTO ESTA MAL
+        print(individuals_frequencies.shape)        
 
-        # CALCULATE FREQUENCIES AND UPDATE THEM AT NODE LEVEL
-        # TRY JUST GETTING THE UNIQUE INDIVIDUALS FREQUENCIES
-        # ADD SOME WARMUP GENERATIONS BEFORE STARTING TO UPDATE THE FREQUENCIES
-        # DO CLIPING OF THE FREQUENCIES IN A LOT OF CASES THE FREQUENCIES HAVE VANISHING GRADIENTS AND ARE PRACTICALLY 0 (E.g. 1e-100)
-        self.symbol_frequencies = new_frequencies
-        print(symbols)
-        print(self.symbol_frequencies)
 
+        mean_fitness = np.mean([individual[2] for individual in individuals])
+        gradients = self._calculate_policy_gradient(mean_fitness, frequencies, self.current_frequencies)
+        
+
+        self.optimizer.step(gradients)
+        new_frequencies = self.optimizer.frequencies
+        self.current_frequencies = new_frequencies
+
+        new_frequencies = new_frequencies.tolist()
         unary_operators_frequencies = new_frequencies[:len(self.unary_operators)]
         binary_operators_frequencies = new_frequencies[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)]
         variables_frequencies = new_frequencies[:len(self.variables)]
@@ -239,13 +204,12 @@ class GeneticSymbolicRegressor:
         individuals = self._create_individuals(self.num_individuals_per_epoch)
         individuals = self._calculate_loss(individuals, X, y)
         individuals = self._calculate_score(individuals, X, y)
-        individuals = self._sort_by_score(individuals)
 
         self.search_results.add_best_individuals_by_loss_and_complexity(individuals, 0)
         #self.search_results.extract_summary_statistics_from_individuals(individuals, 0)
         self.search_results.visualize_best_in_generation()
 
-        best_individual = individuals[0]
+        best_individual = max(individuals, key=lambda individual: individual[2])
         for generation in range(1, self.max_generations + 1):
             stop_timeout_criteria = self._check_stop_timeout(start_time)
             stop_score_criteria = self._check_stop_score(best_individual[2])
@@ -261,33 +225,12 @@ class GeneticSymbolicRegressor:
                 if self.verbose >= 1: logger.info('STOPPING OPTIMIZATION...')
                 break
             
-            if self._check_warmup_generations_finished(generation):
-                ratio_unique_individuals = unique_individuals_ratio(individuals)
-                print("RATIO")
-                print(ratio_unique_individuals)
-                if ratio_unique_individuals <= 0.2:
-                    print("NO HAY DIVERSIDAD")
-                    self.prob_node_mutation = 0.2
-                else:
-                    self.prob_node_mutation = 0.025
-                print(self.prob_node_mutation)
+            unary_operators_frequencies, binary_operators_frequencies, variables_frequencies = self._optimize_frequencies(individuals)
 
-                unary_operators_frequencies, binary_operators_frequencies, variables_frequencies = self._get_updated_frequencies(individuals, 100)
-            else:
-                unary_operators_frequencies = None
-                binary_operators_frequencies = None 
-                variables_frequencies = None
-
-            elite_individuals = self._perform_elitism(individuals)
-            parent_pairs = perform_tournament_selection(individuals, self.tournament_size)
-            offsprings = self._perform_crossover(parent_pairs)
-            offsprings = self._perform_mutation(offsprings)
-            individuals = self._prepare_next_epoch_individual(offsprings, elite_individuals, unary_operators_frequencies, binary_operators_frequencies, variables_frequencies)
+            individuals = self._create_individuals(self.num_individuals_per_epoch, unary_operators_frequencies, binary_operators_frequencies, variables_frequencies)
             individuals = self._calculate_loss(individuals, X, y)
             individuals = self._calculate_score(individuals, X, y)
-            individuals = self._sort_by_score(individuals)
-
-            best_individual = individuals[0]
+            best_individual = max(individuals, key=lambda individual: individual[2])
 
             self.search_results.add_best_individuals_by_loss_and_complexity(individuals, generation)
             #self.search_results.extract_summary_statistics_from_individuals(individuals, generation)

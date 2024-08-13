@@ -1,17 +1,12 @@
 import io
 import re
-import os
-import sys
 import math
 import uuid
 import random
 import warnings
 import graphviz
 
-sys.path.append(os.path.abspath(os.curdir))
-
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 
 from PIL import Image
@@ -193,9 +188,9 @@ def calculate_score(
     try:
         score = score_function(y, eval(executable_equation))
     except:
-        score = -np.inf
+        score = -1.0
     if math.isinf(score) or math.isnan(score):
-        score = -np.inf
+        score = -1.0
     return float(score)
 
 def visualize_binary_tree(node: List[Any], variables: List[str]) -> None:

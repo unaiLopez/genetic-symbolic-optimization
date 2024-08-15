@@ -17,7 +17,7 @@ from src.loss import get_loss_function
 from src.score import get_score_function
 from src.crossover import perform_crossover
 from src.search_results import SearchResults
-from src.mutation import perform_node_mutation
+from src.mutation import perform_node_mutation, perform_hoist_mutation
 from src.tournament import perform_tournament_selection
 from src.diversity import unique_individuals_ratio
 from src.binary_tree import build_full_binary_tree, calculate_loss, calculate_score, count_symbols_frequency
@@ -34,6 +34,7 @@ class GeneticSymbolicRegressor:
         unary_operators: List[str],
         binary_operators: List[str],
         prob_node_mutation: float,
+        prob_hoist_mutation: float,
         prob_crossover: float,
         crossover_retries: int,
         tournament_size: int,
@@ -54,6 +55,7 @@ class GeneticSymbolicRegressor:
         self.unary_operators = unary_operators
         self.binary_operators = binary_operators
         self.prob_node_mutation = prob_node_mutation
+        self.prob_hoist_mutation = prob_hoist_mutation
         self.prob_crossover = prob_crossover
         self.crossover_retries = crossover_retries
         self.tournament_size = tournament_size
@@ -111,15 +113,25 @@ class GeneticSymbolicRegressor:
         elite_individuals = individuals[:num_elite_individuals]
         return [individual for individual in elite_individuals]
 
-    def _perform_mutation(self, individuals: List[dict]) -> List[dict]:
+    def _perform_mutation(self, individuals: List[List[Any]]) -> List[List[Any]]:
         for i in range(len(individuals)):
-            individuals[i][-1] = perform_node_mutation(
-                individuals[i][-1],
-                self.prob_node_mutation,
-                self.unary_operators,
-                self.binary_operators,
-                self.variables
-            )
+            if random.random() <= self.prob_node_mutation:
+                individuals[i][-1] = perform_node_mutation(
+                    individuals[i][-1],
+                    self.prob_node_mutation,
+                    self.unary_operators,
+                    self.binary_operators,
+                    self.variables
+                )
+            if random.random() <= self.prob_hoist_mutation:
+                individuals[i][-1] = perform_hoist_mutation(
+                    individuals[i][-1],
+                    individuals[i][0],
+                    self.unary_operators,
+                    self.binary_operators,
+                    self.variables
+                )
+
         return individuals
     
     def _perform_crossover(self, parents: Tuple[List[dict], List[dict]]) -> List[dict]:

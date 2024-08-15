@@ -2,6 +2,8 @@ import random
 
 from typing import List, Any
 
+from src.binary_tree import build_full_binary_tree
+
 def perform_subtree_mutation():
     #TODO
     """
@@ -21,10 +23,10 @@ def perform_node_mutation(
     prob_mutation: float,
     unary_operators: List[str],
     binary_operators: List[str],
-    variables: List[str]):
+    variables: List[str]) -> List[Any]:
     
     # Helper function to perform mutation
-    def _mutate_node(node: List[Any]):
+    def _do_node_mutation(node: List[Any]) -> None:
         if node is None:
             return
         
@@ -51,24 +53,39 @@ def perform_node_mutation(
         else:
             # Recursively apply mutation to left and right children
             if node[1] is not None:
-                _mutate_node(node[1])
+                _do_node_mutation(node[1])
             if node[1] is not None:
-                _mutate_node(node[2])
+                _do_node_mutation(node[2])
 
     # Start mutation from the root node
-    _mutate_node(node)
+    _do_node_mutation(node)
     return node
     
-    def perform_hoist_mutation():
-        #TODO
-        """
-        Select a random subtree and replace the entire tree with this subtree, effectively "hoisting" it up to the root.
-        """
-        pass
+def perform_hoist_mutation(
+    node: List[Any],
+    max_initialization_depth: int,
+    unary_operators: List[str],
+    binary_operators: List[str],
+    variables: List[str]) -> List[Any]:
 
-    def perform_shrink_mutation():
-        #TODO
-        """
-        Select a subtree and replace it with one of its subtrees, effectively shrinking the tree.
-        """
-        pass
+    """
+    Select a random subtree and replace the entire tree with this subtree, effectively "hoisting" it up to the root.
+    """
+
+    tree = build_full_binary_tree(
+        max_initialization_depth,
+        variables,
+        unary_operators,
+        binary_operators,
+        None,
+        None,
+        None
+    )
+    return tree
+    
+def perform_shrink_mutation():
+    #TODO
+    """
+    Select a subtree and replace it with one of its subtrees, effectively shrinking the tree.
+    """
+    pass

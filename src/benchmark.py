@@ -66,13 +66,15 @@ if __name__ == "__main__":
         "equation": [],
         "search_duration": []
     })
+    num_trials = 10
 
-    for formula_name in ["newtons_universal_law_of_gravity", "hooks_law"]:
+    for formula_name in ["hooks_law", "newtons_universal_law_of_gravity"]:
         if formula_name == "newtons_universal_law_of_gravity":
             variables, X, y = generate_newtons_law_data()
         else:
             variables, X, y = generate_hooks_law_data()
-        for i in range(10):
+
+        for i in range(num_trials):
             start_time = time.time()
 
             model = GeneticSymbolicRegressor(
@@ -82,6 +84,7 @@ if __name__ == "__main__":
                 unary_operators=unary_operators,
                 binary_operators=binary_operators,
                 prob_node_mutation=0.025,
+                prob_hoist_mutation=0.01,
                 prob_crossover=0.8,
                 crossover_retries=3,
                 tournament_size=25,
@@ -90,7 +93,7 @@ if __name__ == "__main__":
                 stop_score=0.999,
                 max_generations=1000,
                 frequencies_learning_rate=0.3,
-                warmup_generations=10000,
+                warmup_generations=150,
                 verbose=1,
                 loss_name="mse",
                 score_name="r2",

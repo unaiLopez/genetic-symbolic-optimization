@@ -137,7 +137,7 @@ def build_full_binary_tree(
     binary_operators: List[str],
     unary_operators_frequencies: List[float] = None,
     binary_operators_frequencies: List[float] = None,
-    variables_frequencies: List[float] = None) -> dict:
+    variables_frequencies: List[float] = None) -> List[Any]:
 
     full_binary_tree = [
         max_initialization_depth,                       #max_initialization_depth

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 from PIL import Image
 from typing import List, Callable, Any
-from src_global.operations import *
+from src_global_optim.operations import *
 
 warnings.filterwarnings('ignore', category=RuntimeWarning)
 
@@ -90,11 +90,11 @@ def _build_tree(
     variables: List[str],
     unary_operators: List[str],
     binary_operators: List[str],
-    unary_operators_frequencies: List[float] = None,
-    binary_operators_frequencies: List[float] = None,
-    variables_frequencies: List[float] = None) -> List[Any]:
+    unary_operators_probs: List[float] = None,
+    binary_operators_probs: List[float] = None,
+    variables_probs: List[float] = None) -> List[Any]:
 
-    if unary_operators_frequencies is None or binary_operators_frequencies is None or variables_frequencies is None:
+    if unary_operators_probs is None or binary_operators_probs is None or variables_probs is None:
         has_weights = False
     else:
         has_weights = True
@@ -104,24 +104,32 @@ def _build_tree(
 
     if depth == 1:
         if has_weights:
-            node_value = random.choices(binary_operators + unary_operators + variables, weights=unary_operators_frequencies + binary_operators_frequencies + variables_frequencies)[0]
+            if np.sum(variables_probs) == 0:
+                print("RANDOM VARIABLES")
+                node_value = random.choices(variables)[0]
+            else:
+                node_value = random.choices(variables, weights=variables_probs)[0]
         else:
-            node_value = random.choices(binary_operators + unary_operators + variables)[0]
+            node_value = random.choices(variables)[0]
 
         return [node_value, None, None]
     else:
         if has_weights:
-            node_value = random.choices(binary_operators + unary_operators + variables, weights=unary_operators_frequencies + binary_operators_frequencies + variables_frequencies)[0]
+            if np.sum(unary_operators_probs + binary_operators_probs + variables_probs) == 0:
+                print("RANDOM OPERATORS")
+                node_value = random.choices(binary_operators + unary_operators + variables)[0]
+            else:
+                node_value = random.choices(binary_operators + unary_operators + variables, weights=unary_operators_probs + binary_operators_probs + variables_probs)[0]
         else:
             node_value = random.choices(binary_operators + unary_operators + variables)[0]
 
         node = [node_value, None, None]
                 
         if node_value in unary_operators:
-            node[2] = _build_tree(depth - 1, node, variables, unary_operators, binary_operators, unary_operators_frequencies, binary_operators_frequencies, variables_frequencies)
+            node[2] = _build_tree(depth - 1, node, variables, unary_operators, binary_operators, unary_operators_probs, binary_operators_probs, variables_probs)
         elif node_value in binary_operators:
-            node[1] = _build_tree(depth - 1, node, variables, unary_operators, binary_operators, unary_operators_frequencies, binary_operators_frequencies, variables_frequencies)
-            node[2] = _build_tree(depth - 1, node, variables, unary_operators, binary_operators, unary_operators_frequencies, binary_operators_frequencies, variables_frequencies)
+            node[1] = _build_tree(depth - 1, node, variables, unary_operators, binary_operators, unary_operators_probs, binary_operators_probs, variables_probs)
+            node[2] = _build_tree(depth - 1, node, variables, unary_operators, binary_operators, unary_operators_probs, binary_operators_probs, variables_probs)
 
         return node    
 
@@ -130,10 +138,10 @@ def build_full_binary_tree(
     variables: List[str],
     unary_operators: List[str],
     binary_operators: List[str],
-    unary_operators_frequencies: List[float] = None,
-    binary_operators_frequencies: List[float] = None,
-    variables_frequencies: List[float] = None) -> dict:
-
+    unary_operators_probs: List[float] = None,
+    binary_operators_probs: List[float] = None,
+    variables_probs: List[float] = None) -> List[Any]:
+    
     full_binary_tree = [
         max_initialization_depth,                       #max_initialization_depth
         None,                                           #loss
@@ -144,6 +152,13 @@ def build_full_binary_tree(
         None,                                           #executable_equation
         None                                            #complexity
     ]
+    if unary_operators_probs is None or binary_operators_probs is None or variables_probs is None:
+        num_symbols = len(unary_operators) + len(binary_operators) + len(variables)
+        probabilities = np.full(num_symbols, 1.0 / num_symbols)
+        full_binary_tree.append(probabilities)  #probabilities
+    else:
+        probabilities = unary_operators_probs + binary_operators_probs + variables_probs
+        full_binary_tree.append(probabilities)  #probabilities
 
     tree = _build_tree(
         full_binary_tree[3],
@@ -151,9 +166,9 @@ def build_full_binary_tree(
         variables,
         unary_operators,
         binary_operators,
-        unary_operators_frequencies,
-        binary_operators_frequencies,
-        variables_frequencies
+        unary_operators_probs,
+        binary_operators_probs,
+        variables_probs
     )
     full_binary_tree.append(tree)
     full_binary_tree = update_tree_info(
@@ -174,9 +189,9 @@ def calculate_loss(
     try:
         loss = loss_function(y, eval(executable_equation))
     except:
-        loss = 1e99
+        loss = np.inf
     if math.isinf(loss) or math.isnan(loss):
-        loss = 1e99
+        loss = np.inf
     return float(loss)
 
 def calculate_score(

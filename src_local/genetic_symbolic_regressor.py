@@ -10,11 +10,11 @@ import numpy as np
 
 from typing import List, Tuple, Optional, Union, Any
 
-from src.loss import get_loss_function
-from src.optimizers import AdamOptimizer
-from src.score import get_score_function
-from src.search_results import SearchResults
-from src.binary_tree import build_full_binary_tree, calculate_loss, calculate_score, count_symbols_frequency
+from src_local.loss import get_loss_function
+from src_local.optimizers import AdamOptimizer
+from src_local.score import get_score_function
+from src_local.search_results import SearchResults
+from src_local.binary_tree import build_full_binary_tree, calculate_loss, calculate_score, count_symbols_frequency
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('GeneticSymbolicRegressor')
@@ -195,7 +195,8 @@ class GeneticSymbolicRegressor:
             """
             print("GRADIENTS")
             print(gradients)
-            
+            print("PROBS")
+            print(self.frequency_t)
             self.frequency_t_minus_1 = self.frequency_t.copy()
             self.optimizer.step(gradients)
             self.frequency_t = self.optimizer.frequencies.copy()

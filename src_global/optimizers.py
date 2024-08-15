@@ -31,7 +31,8 @@ class AdamOptimizer:
         v_hat = self.v / (1 - self.beta2 ** self.t)
         
         self.frequencies -= lr_t * m_hat / (np.sqrt(v_hat) + self.eps)
-        self.frequencies = (self.frequencies - self.frequencies.max()) / (self.frequencies.max() - self.frequencies.min())
+        #self.frequencies = (self.frequencies - self.frequencies.min()) / (self.frequencies.max() - self.frequencies.min())
+        self.frequencies = np.maximum(self.frequencies, 0)
         self.frequencies /= np.sum(self.frequencies)
-        
+        print(self.frequencies)
         return self.frequencies

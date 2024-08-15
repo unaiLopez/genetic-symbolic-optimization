@@ -8,18 +8,17 @@ sys.path.append(os.path.abspath(os.curdir))
 
 import numpy as np
 
-from typing import List, Tuple, Optional, Union, Any
+from typing import List, Optional, Union, Any
 
-from src_global.loss import get_loss_function
-from src_global.optimizers import AdamOptimizer
-from src_global.score import get_score_function
-from src_global.search_results import SearchResults
-from src_global.binary_tree import build_full_binary_tree, calculate_loss, calculate_score, count_symbols_frequency
+from src_global_optim.loss import get_loss_function
+from src_global_optim.score import get_score_function
+from src_global_optim.search_results import SearchResults
+from src_global_optim.binary_tree import build_full_binary_tree, calculate_loss, calculate_score, count_symbols_frequency
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('GeneticSymbolicRegressor')
 
-class GeneticSymbolicRegressor:
+class GradientSymbolicRegressor:
     def __init__(
         self, 
         num_individuals_per_epoch: int,
@@ -27,16 +26,10 @@ class GeneticSymbolicRegressor:
         variables: List[str],
         unary_operators: List[str],
         binary_operators: List[str],
-        prob_node_mutation: float,
-        prob_crossover: float,
-        crossover_retries: int,
-        tournament_size: int,
-        elitism_ratio: float,
         timeout: Optional[int],
         stop_score: Optional[float],
         max_generations: Optional[int] = 50,
-        frequencies_learning_rate: Optional[float] = 0.001,
-        warmup_generations: int = 100,
+        learning_rate: Optional[float] = 0.01,
         verbose: Optional[int] = 1,
         loss_name: Optional[str] = "mae",
         score_name: Optional[str] = "r2",
@@ -47,18 +40,12 @@ class GeneticSymbolicRegressor:
         self.variables = variables
         self.unary_operators = unary_operators
         self.binary_operators = binary_operators
-        self.prob_node_mutation = prob_node_mutation
-        self.prob_crossover = prob_crossover
-        self.crossover_retries = crossover_retries
-        self.tournament_size = tournament_size
-        self.elitism_ratio = elitism_ratio
         self.loss_name = loss_name
         self.score_name = score_name
         self.loss_function = get_loss_function(loss_name)
         self.score_function = get_score_function(score_name)
         
-        self.frequencies_learning_rate = frequencies_learning_rate
-        self.warmup_generations = warmup_generations
+        self.learning_rate = learning_rate
         self.max_generations = max_generations
         self.timeout = timeout
         self.stop_score = stop_score
@@ -66,17 +53,13 @@ class GeneticSymbolicRegressor:
         self.search_results = SearchResults()
 
         self.num_symbols = (len(self.unary_operators) + len(self.binary_operators) + len(self.variables))
-        self.frequency_t = np.full(self.num_symbols, 1.0 / self.num_symbols)
-        self.frequency_t_minus_1 = None
-        self.optimizer = AdamOptimizer(frequencies=self.frequency_t, lr=self.frequencies_learning_rate)
+        self.probabilities = np.full(self.num_symbols, 1.0 / self.num_symbols)
         
         random.seed(random_state)
         np.random.seed(random_state)
 
         if not isinstance(self.variables, list):
             raise TypeError("Variables should be of type List[str]")
-        if self.prob_node_mutation < 0.0 or self.prob_node_mutation > 1.0:
-            raise ValueError("Mutation probability should be between 0.0 and 1.0")
         if self.max_generations is not None:
             if self.max_generations <= 0:
                 raise ValueError("Max generations should be bigger than 0")
@@ -87,9 +70,9 @@ class GeneticSymbolicRegressor:
     def _create_individuals(
         self,
         num_individuals: int,
-        unary_operators_frequencies: List[float] = None,
-        binary_operators_frequencies: List[float] = None,
-        variables_frequencies: List[float] = None) -> List[dict]:
+        unary_operators_probs: List[float] = None,
+        binary_operators_probs: List[float] = None,
+        variables_probs: List[float] = None) -> List[dict]:
 
         individuals = list()
         for i in range(num_individuals):
@@ -99,9 +82,9 @@ class GeneticSymbolicRegressor:
                     variables=self.variables,
                     unary_operators=self.unary_operators,
                     binary_operators=self.binary_operators,
-                    unary_operators_frequencies=unary_operators_frequencies,
-                    binary_operators_frequencies=binary_operators_frequencies,
-                    variables_frequencies=variables_frequencies
+                    unary_operators_probs=unary_operators_probs,
+                    binary_operators_probs=binary_operators_probs,
+                    variables_probs=variables_probs
                 )
             )
         return individuals
@@ -149,48 +132,58 @@ class GeneticSymbolicRegressor:
         else:
             return False
         
-    def _calculate_policy_gradient(self, mean_loss: np.ndarray) -> np.ndarray:
-        return mean_loss * (self.frequency_t - self.frequency_t_minus_1)
-    
-    def _optimize_frequencies(self, individuals: List[Any]) -> Tuple[List[float], List[float], List[float]]:
-        if self.frequency_t_minus_1 is None:
-            symbols = self.unary_operators + self.binary_operators + self.variables
-            total_symbols_frequency = None
-            for individual in individuals:
-                total_symbols_frequency = count_symbols_frequency(individual[-1], symbols, total_symbols_frequency)
-            population_frequency = np.array(list(total_symbols_frequency.values()), dtype=np.float64)
-            population_frequency /= population_frequency.sum()
+    # Gradient descent-like update for probabilities
+    def _update_probabilities(self, probabilities, gradient):
+        probabilities += self.learning_rate * gradient
+        probabilities = (probabilities - probabilities.max()) / (probabilities.max() - probabilities.min())
+        #probabilities = np.maximum(probabilities, 0)  # Ensure non-negative
+        return probabilities / probabilities.sum()  # Normalize to sum to 1
+        
+    def _create_new_individual_with_optimized_probabilities(self, individual: List[Any], X: np.ndarray, y: np.ndarray) -> List[Any]:
+        # Estimate gradients via perturbation
+        gradient = np.zeros_like(individual[8])
+        epsilon = 1e-2
 
-            self.frequency_t_minus_1 = self.frequency_t.copy()
-            self.frequency_t = population_frequency.copy()
-        else:
-            population_losses = np.log(np.array([individual[1] for individual in individuals]))
-            print(f"MIN: {population_losses.min()}")
-            print(f"MEAN: {population_losses.mean()}")
-            #normalized_population_losses = (population_losses - population_losses.min()) / (population_losses.max() - population_losses.min())
-            #print(normalized_population_losses.mean())
-            gradients = self._calculate_policy_gradient(population_losses.mean())
-
-            """
-            print(population_fitness)
-            print("CURRENT")
-            print(self.frequency_t)
-            print("OLD")
-            print(self.frequency_t_minus_1)
-
+        for i in range(len(individual[8])):
+            perturbed_probabilities = np.array(individual[8].copy())
+            perturbed_probabilities[i] += epsilon
+            perturbed_probabilities = (perturbed_probabilities / perturbed_probabilities.sum()).tolist()  # Normalize
             
-            """
-            
-            self.frequency_t_minus_1 = self.frequency_t.copy()
-            self.optimizer.step(gradients)
-            self.frequency_t = self.optimizer.frequencies.copy()
+            perturbed_unary_operators_probs = perturbed_probabilities[:len(self.unary_operators)]
+            perturbed_binary_operators_probs = perturbed_probabilities[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)]
+            perturbed_variables_probs = perturbed_probabilities[-len(self.variables):]
 
-        new_frequency = self.frequency_t.tolist()
-        unary_operators_frequencies = new_frequency[:len(self.unary_operators)]
-        binary_operators_frequencies = new_frequency[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)]
-        variables_frequencies = new_frequency[-len(self.variables):]
+            # PARA REDUCIR LA INCERTIDUMBRE REPETIR ESTE PROCESO N VECES Y CON LOS SCORES HACER BOOTSTRAPING PARA CONSEGUIR LA MEDIA
+            perturbed_tree = build_full_binary_tree(
+                max_initialization_depth=self.max_individual_depth,
+                variables=self.variables,
+                unary_operators=self.unary_operators,
+                binary_operators=self.binary_operators,
+                unary_operators_probs=perturbed_unary_operators_probs,
+                binary_operators_probs=perturbed_binary_operators_probs,
+                variables_probs=perturbed_variables_probs
+            )
+            perturbed_tree_score = calculate_score(X, y, self.score_function, perturbed_tree[6])
+            gradient[i] = (perturbed_tree_score - individual[2]) / epsilon
+        
+        # Update probabilities using the gradient
+        optimized_probabilities = self._update_probabilities(individual[8], gradient)
+        print(optimized_probabilities)
+                
+        optimized_probabilities = optimized_probabilities.tolist()
+        perturbed_unary_operators_probs = optimized_probabilities[:len(self.unary_operators)]
+        perturbed_binary_operators_probs = optimized_probabilities[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)]
+        perturbed_variables_probs = optimized_probabilities[-len(self.variables):]
 
-        return unary_operators_frequencies, binary_operators_frequencies, variables_frequencies
+        return build_full_binary_tree(
+            max_initialization_depth=self.max_individual_depth,
+            variables=self.variables,
+            unary_operators=self.unary_operators,
+            binary_operators=self.binary_operators,
+            unary_operators_probs=perturbed_unary_operators_probs,
+            binary_operators_probs=perturbed_binary_operators_probs,
+            variables_probs=perturbed_variables_probs
+        )
     
     def fit(self, X: np.ndarray, y: np.ndarray):
         if X.size == 0 or y.size == 0:
@@ -222,9 +215,9 @@ class GeneticSymbolicRegressor:
                 if self.verbose >= 1: logger.info('STOPPING OPTIMIZATION...')
                 break
             
-            unary_operators_frequencies, binary_operators_frequencies, variables_frequencies = self._optimize_frequencies(individuals)
-
-            individuals = self._create_individuals(self.num_individuals_per_epoch, unary_operators_frequencies, binary_operators_frequencies, variables_frequencies)
+            for i in range(len(individuals)):
+                individuals[i] = self._create_new_individual_with_optimized_probabilities(individuals[i], X, y)
+                
             individuals = self._calculate_loss(individuals, X, y)
             individuals = self._calculate_score(individuals, X, y)
             best_individual = max(individuals, key=lambda individual: individual[2])

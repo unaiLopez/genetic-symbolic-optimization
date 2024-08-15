@@ -7,8 +7,8 @@ sys.path.append(os.path.abspath(os.curdir))
 import numpy as np
 import pandas as pd
 
-from src.operations import *
-from src.genetic_symbolic_regressor import GeneticSymbolicRegressor
+from src_global_optim.operations import *
+from src_global_optim.gradient_symbolic_regressor import GradientSymbolicRegressor
 
 def generate_hubbles_law_data():
     BENCHMARK_PATH = os.path.join(os.path.abspath("."), "data/benchmark")
@@ -67,7 +67,7 @@ if __name__ == "__main__":
         "search_duration": []
     })
 
-    for formula_name in ["hooks_law", "newtons_universal_law_of_gravity"]:
+    for formula_name in ["newtons_universal_law_of_gravity", "hooks_law"]:
         if formula_name == "newtons_universal_law_of_gravity":
             variables, X, y = generate_newtons_law_data()
         else:
@@ -75,22 +75,16 @@ if __name__ == "__main__":
         for i in range(10):
             start_time = time.time()
 
-            model = GeneticSymbolicRegressor(
-                num_individuals_per_epoch=1000,
+            model = GradientSymbolicRegressor(
+                num_individuals_per_epoch=100,
                 max_individual_depth=5,
                 variables=variables,
                 unary_operators=unary_operators,
                 binary_operators=binary_operators,
-                prob_node_mutation=0.025,
-                prob_crossover=0.8,
-                crossover_retries=3,
-                tournament_size=25,
-                elitism_ratio=0.01,
                 timeout=600,
                 stop_score=0.999,
                 max_generations=1000,
-                frequencies_learning_rate=0.3,
-                warmup_generations=50,
+                learning_rate=0.01,
                 verbose=1,
                 loss_name="mse",
                 score_name="r2",

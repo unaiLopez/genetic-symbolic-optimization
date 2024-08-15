@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 from PIL import Image
 from typing import List, Callable, Any
-from src.operations import *
+from src_local.operations import *
 
 warnings.filterwarnings('ignore', category=RuntimeWarning)
 

@@ -7,8 +7,8 @@ sys.path.append(os.path.abspath(os.curdir))
 import numpy as np
 import pandas as pd
 
-from src_global.operations import *
-from src_global.genetic_symbolic_regressor import GeneticSymbolicRegressor
+from src_local.operations import *
+from src_local.genetic_symbolic_regressor import GeneticSymbolicRegressor
 
 def generate_hubbles_law_data():
     BENCHMARK_PATH = os.path.join(os.path.abspath("."), "data/benchmark")
@@ -89,7 +89,7 @@ if __name__ == "__main__":
                 timeout=600,
                 stop_score=0.999,
                 max_generations=1000,
-                frequencies_learning_rate=0.01,
+                frequencies_learning_rate=0.3,
                 warmup_generations=50,
                 verbose=1,
                 loss_name="mse",

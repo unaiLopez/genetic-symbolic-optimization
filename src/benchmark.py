@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from src.operations import *
-from src.genetic_symbolic_regressor import GeneticSymbolicRegressor
+from src.gradient_descent_symbolic_regressor import GradientDescentSymbolicRegressor
 
 def generate_hubbles_law_data():
     BENCHMARK_PATH = os.path.join(os.path.abspath("."), "data/benchmark")
@@ -77,14 +77,14 @@ if __name__ == "__main__":
         for i in range(num_trials):
             start_time = time.time()
 
-            model = GeneticSymbolicRegressor(
+            model = GradientDescentSymbolicRegressor(
                 max_individual_depth=5,
                 variables=variables,
                 unary_operators=unary_operators,
                 binary_operators=binary_operators,
                 timeout=600,
                 stop_score=0.999,
-                max_generations=1000,
+                max_iterations=1000,
                 probs_learning_rate=0.3,
                 verbose=1,
                 loss_name="mse",

@@ -15,11 +15,7 @@ from typing import List, Tuple, Optional, Union, Any
 
 from src.loss import get_loss_function
 from src.score import get_score_function
-from src.crossover import perform_crossover
 from src.search_results import SearchResults
-from src.mutation import perform_node_mutation, perform_hoist_mutation
-from src.tournament import perform_tournament_selection
-from src.diversity import unique_individuals_ratio
 from src.binary_tree import build_full_binary_tree, calculate_loss, calculate_score
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -28,7 +24,7 @@ logger = logging.getLogger('GeneticSymbolicRegressor')
 class GradientDescentSymbolicRegressor:
     def __init__(
         self, 
-        max_tree_depth: int,
+        max_individual_depth: int,
         variables: List[str],
         unary_operators: List[str],
         binary_operators: List[str],
@@ -41,7 +37,6 @@ class GradientDescentSymbolicRegressor:
         score_name: Optional[str] = "r2",
         random_state: Optional[int] = None):
 
-        self.num_individuals_per_epoch = num_individuals_per_epoch
         self.max_individual_depth = max_individual_depth
         self.variables = variables
         self.unary_operators = unary_operators
@@ -59,9 +54,11 @@ class GradientDescentSymbolicRegressor:
 
         self.num_symbols = len(self.unary_operators) + len(self.binary_operators) + len(self.variables)
         self.symbol_probs_t = np.full(self.num_symbols, 1 / self.num_symbols)
-        self.symbols_probs_minus_t = np.random.uniform(low=1.0, high=1000.0, size=self.num_symbols)
-        self.symbols_probs_minus_t /= self.symbols_probs_minus_t.sum()
-        
+        self.symbol_probs_minus_t = np.random.uniform(low=1.0, high=1000.0, size=self.num_symbols)
+        self.symbol_probs_minus_t /= self.symbol_probs_minus_t.sum()
+        print(self.symbol_probs_t)
+        print(self.symbol_probs_minus_t)
+        raise Exception
         random.seed(random_state)
         np.random.seed(random_state)
 
@@ -104,50 +101,38 @@ class GradientDescentSymbolicRegressor:
         else:
             return False
     
-    def _get_updated_frequencies(self, individual: List[Any]) -> Tuple[List[float], List[float], List[float]]:
+    def _update_probabilities(self, individual: List[Any]) -> Tuple[List[float], List[float], List[float]]:
         symbols = self.unary_operators + self.binary_operators + self.variables
-        
-        
-        frequencies = []
-        for key, value in total_symbols_frequency.items():
-            frequencies.append(value)
-        frequencies = np.divide(frequencies, np.sum(frequencies)).tolist()
-        gradients = np.subtract(self.symbol_frequencies, frequencies)
-        new_frequencies = np.subtract(self.symbol_frequencies, np.multiply(self.frequencies_learning_rate, gradients)).tolist()
 
-        # CALCULATE FREQUENCIES AND UPDATE THEM AT NODE LEVEL
-        # TRY JUST GETTING THE UNIQUE INDIVIDUALS FREQUENCIES
-        # ADD SOME WARMUP GENERATIONS BEFORE STARTING TO UPDATE THE FREQUENCIES
-        # DO CLIPING OF THE FREQUENCIES IN A LOT OF CASES THE FREQUENCIES HAVE VANISHING GRADIENTS AND ARE PRACTICALLY 0 (E.g. 1e-100)
-        self.symbol_frequencies = new_frequencies
-        print(symbols)
-        print(self.symbol_frequencies)
 
-        unary_operators_frequencies = new_frequencies[:len(self.unary_operators)]
-        binary_operators_frequencies = new_frequencies[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)]
-        variables_frequencies = new_frequencies[:len(self.variables)]
 
-        return unary_operators_frequencies, binary_operators_frequencies, variables_frequencies
-    
+        #unary_operators_frequencies = new_frequencies[:len(self.unary_operators)]
+        #binary_operators_frequencies = new_frequencies[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)]
+        #variables_frequencies = new_frequencies[:len(self.variables)]
+
+        #return unary_operators_frequencies, binary_operators_frequencies, variables_frequencies
+        return None, None, None
+
     def fit(self, X: np.ndarray, y: np.ndarray):
         if X.size == 0 or y.size == 0:
             raise ValueError(f"X and y shouldn't be empty.")
         
         start_time = time.time()
 
-        stop_timeout_criteria = self._check_stop_timeout(start_time)
-        stop_score_criteria = self._check_stop_score(best_individual[2])
-        stop_max_generations_criteria = self._check_max_generations_criteria(generation)
-        if self.verbose >= 1:
-            if stop_timeout_criteria:
-                logger.info('TIMEOUT STOP CRITERIA SATISFIED.')
-            if stop_score_criteria:
-                logger.info('SCORE STOP CRITERIA SATISFIED.')
-            if stop_max_generations_criteria:
-                logger.info('NUM GENERATIONS CRITERIA SATISFIED.')
-        if stop_timeout_criteria or stop_score_criteria or stop_max_generations_criteria:
-            if self.verbose >= 1: logger.info('STOPPING OPTIMIZATION...')
-            break
-            
-                unary_operators_frequencies, binary_operators_frequencies, variables_frequencies = self._get_updated_frequencies(individuals, 100)
+        for _ in range(self.max_iterations):
+            stop_timeout_criteria = self._check_stop_timeout(start_time)
+            stop_score_criteria = self._check_stop_score(best_individual[2])
+            stop_max_generations_criteria = self._check_max_generations_criteria(generation)
+            if self.verbose >= 1:
+                if stop_timeout_criteria:
+                    logger.info('TIMEOUT STOP CRITERIA SATISFIED.')
+                if stop_score_criteria:
+                    logger.info('SCORE STOP CRITERIA SATISFIED.')
+                if stop_max_generations_criteria:
+                    logger.info('NUM GENERATIONS CRITERIA SATISFIED.')
+            if stop_timeout_criteria or stop_score_criteria or stop_max_generations_criteria:
+                if self.verbose >= 1: logger.info('STOPPING OPTIMIZATION...')
+                break
+                
+            unary_operators_frequencies, binary_operators_frequencies, variables_frequencies = self.update_probabilities(individual)
 

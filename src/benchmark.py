@@ -78,22 +78,14 @@ if __name__ == "__main__":
             start_time = time.time()
 
             model = GeneticSymbolicRegressor(
-                num_individuals_per_epoch=1000,
                 max_individual_depth=5,
                 variables=variables,
                 unary_operators=unary_operators,
                 binary_operators=binary_operators,
-                prob_node_mutation=0.025,
-                prob_hoist_mutation=0.01,
-                prob_crossover=0.8,
-                crossover_retries=3,
-                tournament_size=25,
-                elitism_ratio=0.01,
                 timeout=600,
                 stop_score=0.999,
                 max_generations=1000,
-                frequencies_learning_rate=0.3,
-                warmup_generations=150,
+                probs_learning_rate=0.3,
                 verbose=1,
                 loss_name="mse",
                 score_name="r2",

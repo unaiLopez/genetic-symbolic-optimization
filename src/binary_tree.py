@@ -38,17 +38,6 @@ def _calculate_max_depth(node: List[Any]) -> int:
     right_depth = _calculate_max_depth(node[2]) if node[2] else 0
     return max(left_depth, right_depth) + 1
 
-def count_symbols_frequency(node: List[Any], symbols: List[str], symbol_counts: dict = None) -> dict:
-    if symbol_counts is None:
-        symbol_counts = {symbol: 0 for symbol in symbols}
-    symbol_counts[node[0]] += 1
-    if node[1]:
-        symbol_counts = count_symbols_frequency(node[1], symbols, symbol_counts)
-    if node[2]:
-        symbol_counts = count_symbols_frequency(node[2], symbols, symbol_counts)
-    
-    return symbol_counts
-
 def _build_equation(node: List[Any], operators: List[str]) -> str:
     if node[0] in operators:
         operation = str(OPERATIONS[node[0]])

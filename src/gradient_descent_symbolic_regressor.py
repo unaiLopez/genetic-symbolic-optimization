@@ -104,13 +104,11 @@ class GradientDescentSymbolicRegressor:
     def _update_probabilities(self, individual: List[Any]) -> Tuple[List[float], List[float], List[float]]:
         symbols = self.unary_operators + self.binary_operators + self.variables
 
-
-
         #unary_operators_frequencies = new_frequencies[:len(self.unary_operators)]
         #binary_operators_frequencies = new_frequencies[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)]
         #variables_frequencies = new_frequencies[:len(self.variables)]
-
         #return unary_operators_frequencies, binary_operators_frequencies, variables_frequencies
+
         return None, None, None
 
     def fit(self, X: np.ndarray, y: np.ndarray):

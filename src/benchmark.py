@@ -56,7 +56,7 @@ def generate_hooks_law_data():
     return list(X.columns), X.to_numpy(), f
 
 if __name__ == "__main__":
-    unary_operators =  ["exp", "abs", "log", "sin", "cos", "tan", "**0", "**2", "**3", "**-1", "**-2", "**-3"]   #CUANDO SOLO HAY UN OPERADOR FALLA LA MUTACION
+    unary_operators =  ["**2"]#["exp", "abs", "log", "sin", "cos", "tan", "**0", "**2", "**3", "**-1", "**-2", "**-3"]   #CUANDO SOLO HAY UN OPERADOR FALLA LA MUTACION
     binary_operators = ["+", "-", "*", "**", "/"]
     df_benchmarking = pd.DataFrame({
         "formula": [],
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     })
     num_trials = 10
 
-    for formula_name in ["hooks_law", "newtons_universal_law_of_gravity"]:
+    for formula_name in ["newtons_universal_law_of_gravity", "hooks_law"]:
         if formula_name == "newtons_universal_law_of_gravity":
             variables, X, y = generate_newtons_law_data()
         else:
@@ -87,13 +87,13 @@ if __name__ == "__main__":
                 prob_hoist_mutation=0.01,
                 prob_crossover=0.8,
                 crossover_retries=3,
-                tournament_size=25,
+                tournament_size=50,
                 elitism_ratio=0.01,
                 timeout=600,
                 stop_score=0.999,
                 max_generations=1000,
-                frequencies_learning_rate=0.3,
-                warmup_generations=150,
+                probs_learning_rate=0.2,
+                warmup_generations=50,
                 verbose=1,
                 loss_name="mse",
                 score_name="r2",

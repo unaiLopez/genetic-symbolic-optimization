@@ -1,0 +1,21 @@
+formula,trial,score,loss,equation,search_duration
+newtons_universal_law_of_gravity,0.0,1.0,571756783861760.0,"(np.divide((np.multiply(G, M_sun)), (np.multiply((np.divide(r_distance_from_sun, (np.divide(m_planets, r_distance_from_sun)))), (np.divide(M_sun, M_sun))))))",4.842714786529541
+newtons_universal_law_of_gravity,1.0,1.0,19327352832.0,"(np.multiply(M_sun, (np.divide(m_planets, (np.multiply(r_distance_from_sun, (np.divide(r_distance_from_sun, G))))))))",65.56775045394897
+newtons_universal_law_of_gravity,2.0,1.0,3.9129026295650797e+24,"(np.subtract((np.divide((np.multiply(G, m_planets)), (np.divide(r_distance_from_sun, (np.divide(M_sun, r_distance_from_sun)))))), r_distance_from_sun))",40.91345238685608
+newtons_universal_law_of_gravity,3.0,0.9999989891186435,1.7627373860164136e+40,"(np.multiply((np.add((np.divide((np.multiply(M_sun, m_planets)), (power_2(r_distance_from_sun)))), (np.add((np.add(G, m_planets)), M_sun)))), G))",48.711233139038086
+newtons_universal_law_of_gravity,4.0,1.0,19827716521984.0,"(np.multiply((np.multiply((np.divide(G, r_distance_from_sun)), (np.divide(m_planets, G)))), (np.multiply((np.divide(G, r_distance_from_sun)), M_sun))))",30.808839321136475
+newtons_universal_law_of_gravity,5.0,1.0,567367327285248.0,"(np.multiply((np.divide(m_planets, (np.divide(r_distance_from_sun, G)))), (np.divide(M_sun, r_distance_from_sun))))",0.3086967468261719
+newtons_universal_law_of_gravity,6.0,1.0,571754636378112.0,"(np.multiply((np.divide((np.divide(m_planets, r_distance_from_sun)), (np.add(r_distance_from_sun, G)))), (np.multiply(G, M_sun))))",78.16023278236389
+newtons_universal_law_of_gravity,7.0,1.0,571754636378112.0,"(np.divide((np.add((np.multiply((np.multiply(G, m_planets)), M_sun)), (np.divide((power_2(r_distance_from_sun)), (np.power(m_planets, r_distance_from_sun)))))), (power_2(r_distance_from_sun))))",113.57572364807129
+newtons_universal_law_of_gravity,8.0,0.9999999999999943,9.832059100631516e+31,"(np.divide((np.multiply(G, (np.divide(m_planets, r_distance_from_sun)))), (np.power((np.divide(r_distance_from_sun, M_sun)), (np.power(G, G))))))",29.626019954681396
+newtons_universal_law_of_gravity,9.0,1.0,11014443630592.0,"(np.multiply((np.multiply(M_sun, (np.divide((np.divide(G, r_distance_from_sun)), r_distance_from_sun)))), m_planets))",63.21185374259949
+hooks_law,0.0,1.0,0.0,"(np.multiply((np.subtract(current_length, original_length)), k))",6.684345722198486
+hooks_law,1.0,1.0,0.0,"(np.subtract((np.multiply(k, (np.subtract(current_length, original_length)))), (np.subtract(original_length, original_length))))",3.0588228702545166
+hooks_law,2.0,1.0,0.0,"(np.multiply(k, (np.subtract(current_length, original_length))))",0.3894472122192383
+hooks_law,3.0,1.0,8.213275801806499e-26,"(np.subtract((np.multiply(current_length, k)), (np.multiply(k, original_length))))",0.4789621829986572
+hooks_law,4.0,1.0,8.213275801806499e-26,"(np.subtract((np.multiply(k, current_length)), (np.multiply(original_length, k))))",1.9364476203918457
+hooks_law,5.0,1.0,0.0,"(np.multiply((np.multiply((np.divide(current_length, current_length)), k)), (np.subtract(current_length, original_length))))",0.3603181838989258
+hooks_law,6.0,1.0,0.0,"(np.multiply((np.subtract(current_length, original_length)), k))",0.8046135902404785
+hooks_law,7.0,1.0,0.0,"(np.multiply((np.subtract(current_length, original_length)), k))",0.381453275680542
+hooks_law,8.0,1.0,0.0,"(np.multiply((np.subtract(current_length, original_length)), k))",0.38192081451416016
+hooks_law,9.0,1.0,0.0,"(np.multiply((np.subtract(current_length, original_length)), k))",0.3881080150604248

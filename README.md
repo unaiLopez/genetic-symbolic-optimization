@@ -8,8 +8,12 @@
   - ~~Tener 1 dataframe con el mejor individuo por complexity~~ -> DONE
   - ~~Visualizar evolución (best_loss, worst_loss and mean_loss)~~ -> DONE
 
-- Revisar el perform selection y el tournament
+- Revisar el perform selection y el tournament -> DONE
+- Arreglar bug mutaciones si alguno de los operadores binarios, unarios o variables solo son 1. Loop infinito -> DONE
+
+- Multiple populations in parallel with multiple subsets of symbols (find a good prior) META LEARNER
 - Múltiples poblaciones a la vez ¿Con crossover entre poblaciones?
+- Implementar Age regularization
 - Implementar más mutaciones (if mutación then implementar aleatoriamente alguna de todas las opciones)
 - Arreglo de el best siempre tiene que ser el que menos loss tiene y además menos complexity
 - Convertir fórmulas en numpy a sympy

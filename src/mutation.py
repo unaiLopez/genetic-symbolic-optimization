@@ -33,23 +33,26 @@ def perform_node_mutation(
         # Randomly decide whether to mutate this node or descend further
         if random.random() < prob_mutation:
             if node[0] in unary_operators:
-                # Replace with another operator
-                new_operator = random.choice(unary_operators)
-                while new_operator == node[0]:
+                if len(unary_operators) > 1:
+                    # Replace with another operator
                     new_operator = random.choice(unary_operators)
-                node[0] = new_operator
+                    while new_operator == node[0]:
+                        new_operator = random.choice(unary_operators)
+                    node[0] = new_operator
             elif node[0] in binary_operators:
-                # Replace with another operator
-                new_operator = random.choice(binary_operators)
-                while new_operator == node[0]:
+                if len(binary_operators) > 1:
+                    # Replace with another operator
                     new_operator = random.choice(binary_operators)
-                node[0] = new_operator
+                    while new_operator == node[0]:
+                        new_operator = random.choice(binary_operators)
+                    node[0] = new_operator
             elif node[0] in variables:
-                # Replace with another terminal
-                new_terminal = random.choice(variables)
-                while new_terminal == node[0]:
+                if len(variables) > 1:
+                    # Replace with another terminal
                     new_terminal = random.choice(variables)
-                node[0] = new_terminal
+                    while new_terminal == node[0]:
+                        new_terminal = random.choice(variables)
+                    node[0] = new_terminal
         else:
             # Recursively apply mutation to left and right children
             if node[1] is not None:
@@ -80,7 +83,8 @@ def perform_hoist_mutation(
         None,
         None,
         None
-    )
+    )[-1]
+    
     return tree
     
 def perform_shrink_mutation():

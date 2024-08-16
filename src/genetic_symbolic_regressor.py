@@ -41,11 +41,11 @@ class GeneticSymbolicRegressor:
         elitism_ratio: float,
         timeout: Optional[int],
         stop_score: Optional[float],
-        max_generations: Optional[int] = 50,
-        frequencies_learning_rate: Optional[float] = 0.3,
+        max_generations: Optional[int] = 1000,
+        probs_learning_rate: Optional[float] = 0.25,
         warmup_generations: int = 100,
         verbose: Optional[int] = 1,
-        loss_name: Optional[str] = "mae",
+        loss_name: Optional[str] = "mse",
         score_name: Optional[str] = "r2",
         random_state: Optional[int] = None):
 
@@ -64,14 +64,19 @@ class GeneticSymbolicRegressor:
         self.score_name = score_name
         self.loss_function = get_loss_function(loss_name)
         self.score_function = get_score_function(score_name)
-        self.frequencies_learning_rate = frequencies_learning_rate
+        self.probs_learning_rate = probs_learning_rate
         self.warmup_generations = warmup_generations
         self.max_generations = max_generations
         self.timeout = timeout
         self.stop_score = stop_score
         self.verbose = verbose
         self.search_results = SearchResults()
-        self.symbol_frequencies = [1 / (len(self.unary_operators) + len(self.binary_operators) + len(self.variables))] * (len(self.unary_operators) + len(self.binary_operators) + len(self.variables))
+        
+        self.num_symbols = len(self.unary_operators) + len(self.binary_operators) + len(self.variables)
+        self.symbol_probs_t = np.full(self.num_symbols, 1 / self.num_symbols)
+        self.symbol_probs_t_minus_1 = np.random.uniform(low=1.0, high=100.0, size=self.num_symbols)
+        self.symbol_probs_t_minus_1 /= self.symbol_probs_t_minus_1.sum()
+
         random.seed(random_state)
         np.random.seed(random_state)
 
@@ -89,9 +94,9 @@ class GeneticSymbolicRegressor:
     def _create_individuals(
         self,
         num_individuals: int,
-        unary_operators_frequencies: List[float] = None,
-        binary_operators_frequencies: List[float] = None,
-        variables_frequencies: List[float] = None) -> List[dict]:
+        unary_operators_probs: List[float] = None,
+        binary_operators_probs: List[float] = None,
+        variables_probs: List[float] = None) -> List[dict]:
 
         individuals = list()
         for _ in range(num_individuals):
@@ -101,9 +106,9 @@ class GeneticSymbolicRegressor:
                     variables=self.variables,
                     unary_operators=self.unary_operators,
                     binary_operators=self.binary_operators,
-                    unary_operators_frequencies=unary_operators_frequencies,
-                    binary_operators_frequencies=binary_operators_frequencies,
-                    variables_frequencies=variables_frequencies
+                    unary_operators_probs=unary_operators_probs,
+                    binary_operators_probs=binary_operators_probs,
+                    variables_probs=variables_probs
                 )
             )
         return individuals
@@ -115,26 +120,29 @@ class GeneticSymbolicRegressor:
 
     def _perform_mutation(self, individuals: List[List[Any]]) -> List[List[Any]]:
         for i in range(len(individuals)):
-            if random.random() <= self.prob_node_mutation:
-                individuals[i][-1] = perform_node_mutation(
-                    individuals[i][-1],
-                    self.prob_node_mutation,
-                    self.unary_operators,
-                    self.binary_operators,
-                    self.variables
-                )
-            if random.random() <= self.prob_hoist_mutation:
-                individuals[i][-1] = perform_hoist_mutation(
-                    individuals[i][-1],
-                    individuals[i][0],
-                    self.unary_operators,
-                    self.binary_operators,
-                    self.variables
-                )
+            mutation_type_selector = random.randint(0, 1)
+            if mutation_type_selector == 0:
+                if random.random() <= self.prob_node_mutation:
+                    individuals[i][-1] = perform_node_mutation(
+                        individuals[i][-1],
+                        self.prob_node_mutation,
+                        self.unary_operators,
+                        self.binary_operators,
+                        self.variables
+                    )
+            elif mutation_type_selector == 1:
+                if random.random() <= self.prob_hoist_mutation:
+                    individuals[i][-1] = perform_hoist_mutation(
+                        individuals[i][-1],
+                        individuals[i][0],
+                        self.unary_operators,
+                        self.binary_operators,
+                        self.variables
+                    )
 
         return individuals
     
-    def _perform_crossover(self, parents: Tuple[List[dict], List[dict]]) -> List[dict]:
+    def _perform_crossover(self, parents: Tuple[List[dict], List[dict]]) -> List[List[Any]]:
         offsprings = list()
         operators = self.unary_operators + self.binary_operators
         for parent1, parent2 in parents:
@@ -151,12 +159,12 @@ class GeneticSymbolicRegressor:
                 offsprings.append(offspring2)
         return offsprings
 
-    def _calculate_loss(self, individuals: List[dict], X: np.ndarray, y: np.ndarray) -> List[dict]:
+    def _calculate_loss(self, individuals: List[dict], X: np.ndarray, y: np.ndarray) -> List[List[Any]]:
         for i in range(len(individuals)):
             individuals[i][1] = calculate_loss(X, y, self.loss_function, individuals[i][6])
         return individuals
 
-    def _calculate_score(self, individuals: List[dict], X: np.ndarray, y: np.ndarray) -> List[dict]:
+    def _calculate_score(self, individuals: List[dict], X: np.ndarray, y: np.ndarray) -> List[List[Any]]:
         for i in range(len(individuals)):
             individuals[i][2] = calculate_score(X, y, self.score_function, individuals[i][6])
         return individuals
@@ -170,11 +178,15 @@ class GeneticSymbolicRegressor:
         self,
         offsprings: List[dict],
         elite_individuals: List[dict],
-        unary_operators_frequencies: List[float] = None,
-        binary_operators_frequencies: List[float] = None,
-        variables_frequencies: List[float] = None) -> List[dict]:
+        unary_operators_probs: List[float] = None,
+        binary_operators_probs: List[float] = None,
+        variables_probs: List[float] = None) -> List[dict]:
 
-        new_individuals = self._create_individuals(self.num_individuals_per_epoch - len(offsprings) - len(elite_individuals), unary_operators_frequencies, binary_operators_frequencies, variables_frequencies)
+        new_individuals = self._create_individuals(
+            self.num_individuals_per_epoch - len(offsprings) - len(elite_individuals),
+            unary_operators_probs,
+            binary_operators_probs,
+            variables_probs)
         return (
             elite_individuals +
             offsprings +
@@ -209,33 +221,46 @@ class GeneticSymbolicRegressor:
         else:
             return False
     
+    def _check_all_stop_criterias(self, generation: int, best_score: float, start_time: float) -> bool:
+        stop_timeout_criteria = self._check_stop_timeout(start_time)
+        stop_score_criteria = self._check_stop_score(best_score)
+        stop_max_generations_criteria = self._check_max_generations_criteria(generation)
+        if self.verbose >= 1:
+            if stop_timeout_criteria:
+                logger.info('TIMEOUT STOP CRITERIA SATISFIED.')
+            if stop_score_criteria:
+                logger.info('SCORE STOP CRITERIA SATISFIED.')
+            if stop_max_generations_criteria:
+                logger.info('NUM GENERATIONS CRITERIA SATISFIED.')
+        if stop_timeout_criteria or stop_score_criteria or stop_max_generations_criteria:
+            if self.verbose >= 1: logger.info('STOPPING OPTIMIZATION...')
+            return True
+        else:
+            return False
+    
     def _check_warmup_generations_finished(self, generation: int) -> bool:
         if generation > self.warmup_generations:
             return True
         else:
             return False
 
+    # ESTA FUNCION NO ESTA BIEN. HAY QUE REVISARLA
     def _get_updated_frequencies(self, individuals: List[Any], best_k_individuals: int) -> Tuple[List[float], List[float], List[float]]:
-        symbols = self.unary_operators + self.binary_operators + self.variables
-        total_symbols_frequency = None
-        for individual in individuals[:best_k_individuals]:
-            total_symbols_frequency = count_symbols_frequency(individual[-1], symbols, total_symbols_frequency)
+        best_scores = [individual[2] for individual in individuals[:best_k_individuals]]
+        mean_best_scores = np.mean(best_scores)
+        
+        gradients = mean_best_scores * (self.symbol_probs_t - self.symbol_probs_t_minus_1)
+        new_frequencies = self.symbol_probs_t + self.probs_learning_rate * gradients
 
-        frequencies = []
-        for key, value in total_symbols_frequency.items():
-            frequencies.append(value)
-        frequencies = np.divide(frequencies, np.sum(frequencies)).tolist()
-        gradients = np.subtract(self.symbol_frequencies, frequencies)
-        new_frequencies = np.subtract(self.symbol_frequencies, np.multiply(self.frequencies_learning_rate, gradients)).tolist()
-
-        # CALCULATE FREQUENCIES AND UPDATE THEM AT NODE LEVEL
-        # TRY JUST GETTING THE UNIQUE INDIVIDUALS FREQUENCIES
-        # ADD SOME WARMUP GENERATIONS BEFORE STARTING TO UPDATE THE FREQUENCIES
+        # CALCULATE PROBABILITIES AND UPDATE THEM AT NODE LEVEL
         # DO CLIPING OF THE FREQUENCIES IN A LOT OF CASES THE FREQUENCIES HAVE VANISHING GRADIENTS AND ARE PRACTICALLY 0 (E.g. 1e-100)
-        self.symbol_frequencies = new_frequencies
-        print(symbols)
-        print(self.symbol_frequencies)
+        self.symbol_probs_t_minus_1 = self.symbol_probs_t.copy()
+        self.symbol_probs_t = new_frequencies.copy()
+        print(mean_best_scores)
+        print(self.symbol_probs_t_minus_1)
+        print(self.symbol_probs_t)
 
+        new_frequencies = new_frequencies.tolist()
         unary_operators_frequencies = new_frequencies[:len(self.unary_operators)]
         binary_operators_frequencies = new_frequencies[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)]
         variables_frequencies = new_frequencies[:len(self.variables)]
@@ -259,30 +284,20 @@ class GeneticSymbolicRegressor:
 
         best_individual = individuals[0]
         for generation in range(1, self.max_generations + 1):
-            stop_timeout_criteria = self._check_stop_timeout(start_time)
-            stop_score_criteria = self._check_stop_score(best_individual[2])
-            stop_max_generations_criteria = self._check_max_generations_criteria(generation)
-            if self.verbose >= 1:
-                if stop_timeout_criteria:
-                    logger.info('TIMEOUT STOP CRITERIA SATISFIED.')
-                if stop_score_criteria:
-                    logger.info('SCORE STOP CRITERIA SATISFIED.')
-                if stop_max_generations_criteria:
-                    logger.info('NUM GENERATIONS CRITERIA SATISFIED.')
-            if stop_timeout_criteria or stop_score_criteria or stop_max_generations_criteria:
-                if self.verbose >= 1: logger.info('STOPPING OPTIMIZATION...')
+            stop = self._check_all_stop_criterias(generation, best_individual[2], start_time)
+            if stop:
                 break
-            
+
             if self._check_warmup_generations_finished(generation):
                 ratio_unique_individuals = unique_individuals_ratio(individuals)
                 print("RATIO")
                 print(ratio_unique_individuals)
                 if ratio_unique_individuals <= 0.2:
                     print("NO HAY DIVERSIDAD")
-                    self.prob_node_mutation = 0.2
+                    self.prob_hoist_mutation = 0.2
                 else:
-                    self.prob_node_mutation = 0.025
-                print(self.prob_node_mutation)
+                    self.prob_hoist_mutation = 0.01
+                print(self.prob_hoist_mutation)
 
                 unary_operators_frequencies, binary_operators_frequencies, variables_frequencies = self._get_updated_frequencies(individuals, 100)
             else:

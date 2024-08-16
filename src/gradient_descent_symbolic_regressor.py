@@ -56,18 +56,14 @@ class GradientDescentSymbolicRegressor:
         self.symbol_probs_t = np.full(self.num_symbols, 1 / self.num_symbols)
         self.symbol_probs_minus_t = np.random.uniform(low=1.0, high=1000.0, size=self.num_symbols)
         self.symbol_probs_minus_t /= self.symbol_probs_minus_t.sum()
-        print(self.symbol_probs_t)
-        print(self.symbol_probs_minus_t)
-        raise Exception
+
         random.seed(random_state)
         np.random.seed(random_state)
 
         if not isinstance(self.variables, list):
             raise TypeError("Variables should be of type List[str]")
-        if self.prob_node_mutation < 0.0 or self.prob_node_mutation > 1.0:
-            raise ValueError("Mutation probability should be between 0.0 and 1.0")
-        if self.max_generations is not None:
-            if self.max_generations <= 0:
+        if self.max_iterations is not None:
+            if self.max_iterations <= 0:
                 raise ValueError("Max generations should be bigger than 0")
         if self.timeout is not None:
             if self.timeout < 0.0:
@@ -111,26 +107,52 @@ class GradientDescentSymbolicRegressor:
 
         return None, None, None
 
+    def _check_all_stop_criterias(self, iteration: int, score: float, start_time: float) -> bool:
+        stop_timeout_criteria = self._check_stop_timeout(start_time)
+        stop_score_criteria = self._check_stop_score(score)
+        stop_max_generations_criteria = self._check_max_generations_criteria(iteration)
+        if self.verbose >= 1:
+            if stop_timeout_criteria:
+                logger.info('TIMEOUT STOP CRITERIA SATISFIED.')
+            if stop_score_criteria:
+                logger.info('SCORE STOP CRITERIA SATISFIED.')
+            if stop_max_generations_criteria:
+                logger.info('NUM GENERATIONS CRITERIA SATISFIED.')
+        if stop_timeout_criteria or stop_score_criteria or stop_max_generations_criteria:
+            if self.verbose >= 1: logger.info('STOPPING OPTIMIZATION...')
+            return True
+        else:
+            return False
+
     def fit(self, X: np.ndarray, y: np.ndarray):
         if X.size == 0 or y.size == 0:
             raise ValueError(f"X and y shouldn't be empty.")
         
         start_time = time.time()
+        for iteration in range(self.max_iterations):
 
-        for _ in range(self.max_iterations):
-            stop_timeout_criteria = self._check_stop_timeout(start_time)
-            stop_score_criteria = self._check_stop_score(best_individual[2])
-            stop_max_generations_criteria = self._check_max_generations_criteria(generation)
-            if self.verbose >= 1:
-                if stop_timeout_criteria:
-                    logger.info('TIMEOUT STOP CRITERIA SATISFIED.')
-                if stop_score_criteria:
-                    logger.info('SCORE STOP CRITERIA SATISFIED.')
-                if stop_max_generations_criteria:
-                    logger.info('NUM GENERATIONS CRITERIA SATISFIED.')
-            if stop_timeout_criteria or stop_score_criteria or stop_max_generations_criteria:
-                if self.verbose >= 1: logger.info('STOPPING OPTIMIZATION...')
-                break
+            unary_operators_probs = self.symbol_probs_t[:len(self.unary_operators)]
+            binary_operators_probs = self.symbol_probs_t[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)]
+            variables_probs = self.symbol_probs_t[-len(self.variables):]
+
+            individual = build_full_binary_tree(
+                max_initialization_depth=self.max_individual_depth,
+                variables=self.variables,
+                unary_operators=self.unary_operators,
+                binary_operators=self.binary_operators,
+                unary_operators_frequencies=unary_operators_probs,
+                binary_operators_frequencies=binary_operators_probs,
+                variables_frequencies=variables_probs
+            )
+            print(individual)
+            raise Exception
+            
+
+
+
+
+            stop = self._check_all_stop_criterias(iteration, individual[2], start_time)
+            if stop: break
                 
             unary_operators_frequencies, binary_operators_frequencies, variables_frequencies = self.update_probabilities(individual)
 

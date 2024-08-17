@@ -31,7 +31,7 @@ class GradientDescentSymbolicRegressor:
         timeout: Optional[int],
         stop_score: Optional[float],
         max_iterations: Optional[int] = 100,
-        probs_learning_rate: Optional[float] = 0.2,
+        probs_learning_rate: Optional[float] = 0.3,
         verbose: Optional[int] = 1,
         loss_name: Optional[str] = "mse",
         score_name: Optional[str] = "r2",
@@ -41,8 +41,6 @@ class GradientDescentSymbolicRegressor:
         self.variables = variables
         self.unary_operators = unary_operators
         self.binary_operators = binary_operators
-        self.loss_name = loss_name
-        self.score_name = score_name
         self.loss_function = get_loss_function(loss_name)
         self.score_function = get_score_function(score_name)
         self.probs_learning_rate = probs_learning_rate
@@ -88,14 +86,49 @@ class GradientDescentSymbolicRegressor:
         else:
             return False
     
-    def _check_max_generations_criteria(self, generation: int) -> bool:
-        if self.max_generations != None:
-            if generation >= self.max_generations + 1:
+    def _check_max_iterations_criteria(self, iteration: int) -> bool:
+        if self.max_iterations != None:
+            if iteration >= self.max_iterations + 1:
                 return True
             else:
                 return False
         else:
             return False
+
+    def _compute_gradients(self, X, y, probabilities, mean_score, epsilon=1e-2):
+        gradients = np.zeros_like(probabilities)
+        
+        for i in range(len(probabilities)):
+            # Perturb one parameter slightly
+            probabilities[i] += epsilon
+
+            unary_operators_probs = probabilities[:len(self.unary_operators)]
+            binary_operators_probs = probabilities[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)]
+            variables_probs = probabilities[-len(self.variables):]
+
+            perturbed_scores = []
+            for _ in range(1000):
+                perturbed_individual = build_full_binary_tree(
+                    max_initialization_depth=self.max_individual_depth,
+                    variables=self.variables,
+                    unary_operators=self.unary_operators,
+                    binary_operators=self.binary_operators,
+                    unary_operators_frequencies=unary_operators_probs,
+                    binary_operators_frequencies=binary_operators_probs,
+                    variables_frequencies=variables_probs
+                )
+                perturbed_individual[1] = calculate_loss(X, y, self.loss_function, perturbed_individual[6])
+                perturbed_individual[2] = calculate_score(X, y, self.score_function, perturbed_individual[6])
+                perturbed_scores.append(perturbed_individual[2])
+            
+            # Compute the gradient (finite difference)
+            #gradients[i] = (perturbed_individual[2] - individual[2]) / epsilon
+            gradients[i] = (np.mean(perturbed_scores) - mean_score)
+            
+            # Reset the probability
+            probabilities[i] -= epsilon
+        
+        return gradients
     
     def _update_probabilities(self, individual: List[Any]) -> Tuple[List[float], List[float], List[float]]:
         symbols = self.unary_operators + self.binary_operators + self.variables
@@ -110,7 +143,7 @@ class GradientDescentSymbolicRegressor:
     def _check_all_stop_criterias(self, iteration: int, score: float, start_time: float) -> bool:
         stop_timeout_criteria = self._check_stop_timeout(start_time)
         stop_score_criteria = self._check_stop_score(score)
-        stop_max_generations_criteria = self._check_max_generations_criteria(iteration)
+        stop_max_generations_criteria = self._check_max_iterations_criteria(iteration)
         if self.verbose >= 1:
             if stop_timeout_criteria:
                 logger.info('TIMEOUT STOP CRITERIA SATISFIED.')
@@ -130,29 +163,51 @@ class GradientDescentSymbolicRegressor:
         
         start_time = time.time()
         for iteration in range(self.max_iterations):
-
-            unary_operators_probs = self.symbol_probs_t[:len(self.unary_operators)]
-            binary_operators_probs = self.symbol_probs_t[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)]
-            variables_probs = self.symbol_probs_t[-len(self.variables):]
-
-            individual = build_full_binary_tree(
-                max_initialization_depth=self.max_individual_depth,
-                variables=self.variables,
-                unary_operators=self.unary_operators,
-                binary_operators=self.binary_operators,
-                unary_operators_frequencies=unary_operators_probs,
-                binary_operators_frequencies=binary_operators_probs,
-                variables_frequencies=variables_probs
-            )
-            print(individual)
-            raise Exception
             
+            symbol_probs = self.symbol_probs_t.tolist()
+            unary_operators_probs = symbol_probs[:len(self.unary_operators)]
+            binary_operators_probs = symbol_probs[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)]
+            variables_probs = symbol_probs[-len(self.variables):]
+
+            scores = []
+            individuals = []
+            for _ in range(1000):
+                individual = build_full_binary_tree(
+                    max_initialization_depth=self.max_individual_depth,
+                    variables=self.variables,
+                    unary_operators=self.unary_operators,
+                    binary_operators=self.binary_operators,
+                    unary_operators_frequencies=unary_operators_probs,
+                    binary_operators_frequencies=binary_operators_probs,
+                    variables_frequencies=variables_probs
+                )
+                individual[1] = calculate_loss(X, y, self.loss_function, individual[6])
+                individual[2] = calculate_score(X, y, self.score_function, individual[6])
+                individuals.append(individual)
+                scores.append(individual[2])
+
+                stop = self._check_all_stop_criterias(iteration, individual[2], start_time)
+                if stop: break
+            
+            gradients = self._compute_gradients(X, y, symbol_probs, np.mean(scores))
+            
+            self.symbol_probs_minus_t = self.symbol_probs_t.copy()
+            self.symbol_probs_t += self.probs_learning_rate * gradients
+            self.symbol_probs_t /= self.symbol_probs_t.sum()
+
+            max_score = -999.0
+            best_individual = None
+            for i in range(len(individuals)):
+                if individuals[i][2] > max_score:
+                    max_score = individuals[i][2]
+                    best_individual = individuals[i]
+
+            print(f"Iteration {iteration}: Fitness = {best_individual[2]:.4f}, Probabilities = {self.symbol_probs_t}")
+
+        
+        print(f"BEST INDIVIDUAL {individual}")
 
 
 
 
-            stop = self._check_all_stop_criterias(iteration, individual[2], start_time)
-            if stop: break
-                
-            unary_operators_frequencies, binary_operators_frequencies, variables_frequencies = self.update_probabilities(individual)
 

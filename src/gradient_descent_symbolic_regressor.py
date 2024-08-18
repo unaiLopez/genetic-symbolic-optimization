@@ -32,7 +32,7 @@ class GradientDescentSymbolicRegressor:
         timeout: Optional[int],
         stop_score: Optional[float],
         max_iterations: Optional[int] = 100,
-        probs_learning_rate: Optional[float] = 0.001,
+        probs_learning_rate: Optional[float] = 1e-3,
         verbose: Optional[int] = 1,
         loss_name: Optional[str] = "mse",
         score_name: Optional[str] = "r2",
@@ -145,6 +145,7 @@ class GradientDescentSymbolicRegressor:
             self.best_individual = individuals[np.argmax(scores)]
 
             if max_score >= self.stop_score:
+                self.search_results.visualize_best_in_generation()
                 sys.exit(f"WITH A SCORE OF {self.best_score}, THE BEST INDIVIDUAL IS {self.best_individual}")
 
     def _calculate_forward_difference_step(self, X, y, probabilities, node_index, prob_index, iteration, epsilon) -> float:

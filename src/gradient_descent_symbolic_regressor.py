@@ -145,7 +145,6 @@ class GradientDescentSymbolicRegressor:
             if max_score >= self.stop_score:
                 sys.exit(f"WITH A SCORE OF {self.best_score}, THE BEST INDIVIDUAL IS {self.best_individual}")
 
-
     def _compute_gradients(self, X, y, probabilities, mean_score, iteration, epsilon=5e-5):
         gradients = np.zeros_like(probabilities)
         

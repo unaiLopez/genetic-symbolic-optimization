@@ -150,7 +150,10 @@ class GradientDescentSymbolicRegressor:
 
     def _calculate_forward_difference_step(self, X, y, probabilities, node_index, prob_index, iteration, epsilon) -> float:
         # Perturb one parameter slightly
+        probabilities_calibration = np.full(probabilities[node_index].shape[0], epsilon / probabilities[node_index].shape[0])
+        probabilities[node_index] -= probabilities_calibration
         probabilities[node_index][prob_index] += epsilon
+
 
         perturbed_individuals = self._generate_n_individuals(
             X,
@@ -167,6 +170,8 @@ class GradientDescentSymbolicRegressor:
 
     def _calculate_backward_difference_step(self, X, y, probabilities, node_index, prob_index, iteration, epsilon) -> float:
         # Perturb one parameter slightly
+        probabilities_calibration = np.full(probabilities[node_index].shape[0], epsilon / probabilities[node_index].shape[0])
+        probabilities[node_index] += probabilities_calibration
         probabilities[node_index][prob_index] -= epsilon
 
         perturbed_individuals = self._generate_n_individuals(

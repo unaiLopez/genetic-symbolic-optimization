@@ -97,7 +97,7 @@ if __name__ == "__main__":
             start_time = time.time()
 
             model = GradientDescentSymbolicRegressor(
-                num_individuals_per_sample=500,
+                num_individuals_per_sample=250,
                 max_individual_depth=4,
                 variables=variables,
                 unary_operators=unary_operators,
@@ -105,7 +105,7 @@ if __name__ == "__main__":
                 timeout=600,
                 stop_score=0.999,
                 max_iterations=1000,
-                probs_learning_rate=1e-4,
+                probs_learning_rate=5e-3,
                 verbose=1,
                 loss_name="mse",
                 score_name="r2",

@@ -32,7 +32,7 @@ class GradientDescentSymbolicRegressor:
         timeout: Optional[int],
         stop_score: Optional[float],
         max_iterations: Optional[int] = 100,
-        probs_learning_rate: Optional[float] = 0.1,
+        probs_learning_rate: Optional[float] = 0.001,
         verbose: Optional[int] = 1,
         loss_name: Optional[str] = "mse",
         score_name: Optional[str] = "r2",
@@ -40,6 +40,7 @@ class GradientDescentSymbolicRegressor:
 
         self.num_individuals_per_sample = num_individuals_per_sample
         self.max_individual_depth = max_individual_depth
+        self.max_individual_nodes = (2 ** (max_individual_depth + 1)) - 1
         self.variables = variables
         self.unary_operators = unary_operators
         self.binary_operators = binary_operators
@@ -54,9 +55,9 @@ class GradientDescentSymbolicRegressor:
 
         self.symbols = self.unary_operators + self.binary_operators + self.variables
         self.num_symbols = len(self.symbols)
-        self.symbol_probs_t = np.full(self.num_symbols, 1 / self.num_symbols)
-        self.symbol_probs_minus_t = np.random.uniform(low=1.0, high=1000.0, size=self.num_symbols)
-        self.symbol_probs_minus_t /= self.symbol_probs_minus_t.sum()
+        self.symbol_probs_t = np.full((self.max_individual_nodes, self.num_symbols), 1 / self.num_symbols)
+        self.symbol_probs_minus_t = np.random.uniform(low=1.0, high=1000.0, size=(self.max_individual_nodes, self.num_symbols))
+        self.symbol_probs_minus_t /= self.symbol_probs_minus_t.sum(axis=1).reshape(-1, 1)
 
         self.best_score = -999
         self.best_individual = None
@@ -96,18 +97,19 @@ class GradientDescentSymbolicRegressor:
         self,
         X: np.ndarray,
         y: np.ndarray,
-        unary_operators_probs: List[float],
-        binary_operators_probs: List[float],
-        variables_probs: List[float]) -> List[Any]:
+        unary_operators_probs: List[List[float]],
+        binary_operators_probs: List[List[float]],
+        variables_probs: List[List[float]]) -> List[Any]:
+
 
         individual = build_full_binary_tree(
             max_initialization_depth=self.max_individual_depth,
             variables=self.variables,
             unary_operators=self.unary_operators,
             binary_operators=self.binary_operators,
-            unary_operators_frequencies=unary_operators_probs,
-            binary_operators_frequencies=binary_operators_probs,
-            variables_frequencies=variables_probs
+            unary_operators_probs=unary_operators_probs,
+            binary_operators_probs=binary_operators_probs,
+            variables_probs=variables_probs
         )
         individual[1] = calculate_loss(X, y, self.loss_function, individual[6])
         individual[2] = calculate_score(X, y, self.score_function, individual[6])
@@ -118,9 +120,9 @@ class GradientDescentSymbolicRegressor:
         self,
         X: np.ndarray,
         y: np.ndarray,
-        unary_operators_probs: List[float],
-        binary_operators_probs: List[float],
-        variables_probs: List[float]) -> List[List[Any]]:
+        unary_operators_probs: List[List[float]],
+        binary_operators_probs: List[List[float]],
+        variables_probs: List[List[float]]) -> List[List[Any]]:
 
         individuals = []
         for _ in range(self.num_individuals_per_sample):
@@ -145,46 +147,59 @@ class GradientDescentSymbolicRegressor:
             if max_score >= self.stop_score:
                 sys.exit(f"WITH A SCORE OF {self.best_score}, THE BEST INDIVIDUAL IS {self.best_individual}")
 
-    def _compute_gradients(self, X, y, probabilities, mean_score, iteration, epsilon=5e-5):
-        gradients = np.zeros_like(probabilities)
+    def _calculate_forward_difference_step(self, X, y, probabilities, node_index, prob_index, iteration, epsilon) -> float:
+        # Perturb one parameter slightly
+        probabilities[node_index][prob_index] += epsilon
+
+        perturbed_individuals = self._generate_n_individuals(
+            X,
+            y,
+            probabilities[:, :len(self.unary_operators)].tolist(),
+            probabilities[:, len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)].tolist(),
+            probabilities[:, -len(self.variables):].tolist()
+        )
+        perturbed_scores = np.array([perturbed_individual[2] for perturbed_individual in perturbed_individuals])
+        self.search_results.add_best_individuals_by_loss_and_complexity(perturbed_individuals, iteration)
+        self._check_stop_score_criteria(perturbed_individuals, perturbed_scores)
         
-        for i in range(len(probabilities)):
-            # Perturb one parameter slightly
-            probabilities[i] += epsilon
+        return perturbed_scores.mean()
 
-            unary_operators_probs = probabilities[:len(self.unary_operators)]
-            binary_operators_probs = probabilities[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)]
-            variables_probs = probabilities[-len(self.variables):]
+    def _calculate_backward_difference_step(self, X, y, probabilities, node_index, prob_index, iteration, epsilon) -> float:
+        # Perturb one parameter slightly
+        probabilities[node_index][prob_index] -= epsilon
 
-            perturbed_individuals = self._generate_n_individuals(
-                X,
-                y,
-                unary_operators_probs,
-                binary_operators_probs,
-                variables_probs
-            )
-            perturbed_scores = np.array([perturbed_individual[2] for perturbed_individual in perturbed_individuals])
-            self.search_results.add_best_individuals_by_loss_and_complexity(perturbed_individuals, iteration)
-            self._check_stop_score_criteria(perturbed_individuals, perturbed_scores)
+        perturbed_individuals = self._generate_n_individuals(
+            X,
+            y,
+            probabilities[:, :len(self.unary_operators)].tolist(),
+            probabilities[:, len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)].tolist(),
+            probabilities[:, -len(self.variables):].tolist()
+        )
+        perturbed_scores = np.array([perturbed_individual[2] for perturbed_individual in perturbed_individuals])
+        self.search_results.add_best_individuals_by_loss_and_complexity(perturbed_individuals, iteration)
+        self._check_stop_score_criteria(perturbed_individuals, perturbed_scores)
+        
+        return perturbed_scores.mean()
+    
+    def _compute_gradients_central_difference(self, X, y, probabilities, iteration, epsilon=5e-3) -> np.ndarray:
+        gradients = np.zeros((self.max_individual_nodes, self.num_symbols))
+        for node_index in range(self.max_individual_nodes):
+            for prob_index in range(probabilities.shape[1]):
+                forward_difference_value = self._calculate_forward_difference_step(X, y, probabilities, node_index, prob_index, iteration, epsilon)
+                backward_difference_value = self._calculate_backward_difference_step(X, y, probabilities, node_index, prob_index, iteration, epsilon)
 
-            
-
-            
-            # Compute the gradient (finite difference)
-            #gradients[i] = (np.mean(perturbed_scores) - mean_score) / epsilon
-            gradients[i] = (perturbed_scores.mean() - mean_score)
-            
-            # Reset the probability
-            probabilities[i] -= epsilon
+                # Compute the central difference step
+                gradients[node_index][prob_index] = (forward_difference_value - backward_difference_value) / (2 * epsilon)
         
         return gradients
 
     def _update_probabilities(self, gradients: np.ndarray, min_prob: float = 1e-5) -> None:
         self.symbol_probs_minus_t = self.symbol_probs_t.copy()
         self.symbol_probs_t += self.probs_learning_rate * gradients
+        self.symbol_probs_t /= self.symbol_probs_t.sum(axis=1).reshape(-1, 1)
         self.symbol_probs_t = np.clip(self.symbol_probs_t, min_prob, 1)
-        self.symbol_probs_t /= self.symbol_probs_t.sum()
-    
+        self.symbol_probs_t /= self.symbol_probs_t.sum(axis=1).reshape(-1, 1)
+
     def _check_all_stop_criterias(self, iteration: int, score: float, start_time: float) -> bool:
         stop_timeout_criteria = self._check_stop_timeout(start_time)
         stop_score_criteria = self._check_stop_score(score)
@@ -208,30 +223,27 @@ class GradientDescentSymbolicRegressor:
         
         start_time = time.time()
         for iteration in range(self.max_iterations):
-            
-            symbol_probs = self.symbol_probs_t.tolist()
-            unary_operators_probs = symbol_probs[:len(self.unary_operators)]
-            binary_operators_probs = symbol_probs[len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)]
-            variables_probs = symbol_probs[-len(self.variables):]
-
             scores = []
             individuals = []
             individuals = self._generate_n_individuals(
                 X,
                 y,
-                unary_operators_probs,
-                binary_operators_probs,
-                variables_probs
+                self.symbol_probs_t[:, :len(self.unary_operators)].tolist(),
+                self.symbol_probs_t[:, len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)].tolist(),
+                self.symbol_probs_t[:, -len(self.variables):].tolist()
             )
             scores = np.array([individual[2] for individual in individuals])
             self.search_results.add_best_individuals_by_loss_and_complexity(individuals, iteration)
             self._check_stop_score_criteria(individuals, scores)
             
-            
-            gradients = self._compute_gradients(X, y, symbol_probs, scores.mean(), iteration)
+            gradients = self._compute_gradients_central_difference(X, y, self.symbol_probs_t, iteration)
             self._update_probabilities(gradients)
             
-            
             self.search_results.visualize_best_in_generation()
-
-            print(f"Iteration {iteration}:\n\tMax Training Fitness = {self.best_individual[2]}\n\tSymbols' Probabilities = {[(symbol, float(np.round(prob, 4))) for symbol, prob in zip(self.symbols, self.symbol_probs_t)]}")
+            print(f"Iteration {iteration}:\n\tMax Training Fitness = {self.best_individual[2]}")
+            for node_index, symbol_probs_t in enumerate(self.symbol_probs_t):
+                node_probs_string = f"NODE {node_index} PROBABILITIES:\n"
+                for symbol, prob in zip(self.symbols, symbol_probs_t):
+                    node_probs_string += f"\t{symbol} = {np.round(prob, 4)}\n"
+                print(node_probs_string)
+                    

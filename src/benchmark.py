@@ -98,14 +98,14 @@ if __name__ == "__main__":
 
             model = GradientDescentSymbolicRegressor(
                 num_individuals_per_sample=500,
-                max_individual_depth=5,
+                max_individual_depth=4,
                 variables=variables,
                 unary_operators=unary_operators,
                 binary_operators=binary_operators,
                 timeout=600,
                 stop_score=0.999,
                 max_iterations=1000,
-                probs_learning_rate=0.3,
+                probs_learning_rate=1e-4,
                 verbose=1,
                 loss_name="mse",
                 score_name="r2",

@@ -150,10 +150,9 @@ class GradientDescentSymbolicRegressor:
 
     def _calculate_forward_difference_step(self, X, y, probabilities, node_index, prob_index, iteration, epsilon) -> float:
         # Perturb one parameter slightly
-        probabilities_calibration = np.full(probabilities[node_index].shape[0], epsilon / probabilities[node_index].shape[0])
+        probabilities_calibration = epsilon / (probabilities[node_index].shape[0] - 1)
         probabilities[node_index] -= probabilities_calibration
-        probabilities[node_index][prob_index] += epsilon
-
+        probabilities[node_index][prob_index] += (epsilon + probabilities_calibration)
 
         perturbed_individuals = self._generate_n_individuals(
             X,
@@ -162,6 +161,7 @@ class GradientDescentSymbolicRegressor:
             probabilities[:, len(self.unary_operators):len(self.unary_operators) + len(self.binary_operators)].tolist(),
             probabilities[:, -len(self.variables):].tolist()
         )
+
         perturbed_scores = np.array([perturbed_individual[2] for perturbed_individual in perturbed_individuals])
         self.search_results.add_best_individuals_by_loss_and_complexity(perturbed_individuals, iteration)
         self._check_stop_score_criteria(perturbed_individuals, perturbed_scores)
@@ -170,9 +170,9 @@ class GradientDescentSymbolicRegressor:
 
     def _calculate_backward_difference_step(self, X, y, probabilities, node_index, prob_index, iteration, epsilon) -> float:
         # Perturb one parameter slightly
-        probabilities_calibration = np.full(probabilities[node_index].shape[0], epsilon / probabilities[node_index].shape[0])
+        probabilities_calibration = epsilon / (probabilities[node_index].shape[0] - 1)
         probabilities[node_index] += probabilities_calibration
-        probabilities[node_index][prob_index] -= epsilon
+        probabilities[node_index][prob_index] -= (epsilon + probabilities_calibration)
 
         perturbed_individuals = self._generate_n_individuals(
             X,
@@ -187,12 +187,12 @@ class GradientDescentSymbolicRegressor:
         
         return perturbed_scores.mean()
     
-    def _compute_gradients_central_difference(self, X, y, probabilities, iteration, epsilon=5e-3) -> np.ndarray:
+    def _compute_gradients_central_difference(self, X, y, probabilities, iteration, epsilon=1e-2) -> np.ndarray:
         gradients = np.zeros((self.max_individual_nodes, self.num_symbols))
         for node_index in range(self.max_individual_nodes):
             for prob_index in range(probabilities.shape[1]):
-                forward_difference_value = self._calculate_forward_difference_step(X, y, probabilities, node_index, prob_index, iteration, epsilon)
-                backward_difference_value = self._calculate_backward_difference_step(X, y, probabilities, node_index, prob_index, iteration, epsilon)
+                forward_difference_value = self._calculate_forward_difference_step(X, y, probabilities.copy(), node_index, prob_index, iteration, epsilon)
+                backward_difference_value = self._calculate_backward_difference_step(X, y, probabilities.copy(), node_index, prob_index, iteration, epsilon)
 
                 # Compute the central difference step
                 gradients[node_index][prob_index] = (forward_difference_value - backward_difference_value) / (2 * epsilon)

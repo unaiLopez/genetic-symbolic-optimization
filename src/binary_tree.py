@@ -99,12 +99,11 @@ def _build_tree(
 
     index = _calculate_index(current_depth, position)
     if depth == 1:
-        node_value = random.choices(variables, weights=variables_probs[index])[0]
+        node_value = np.random.choice(variables, p=variables_probs[index] / np.sum(variables_probs[index]))
 
         return [node_value, None, None, index]
     else:
-        node_value = random.choices(binary_operators + unary_operators + variables, weights=unary_operators_probs[index] + binary_operators_probs[index] + variables_probs[index])[0]
-
+        node_value = np.random.choice(binary_operators + unary_operators + variables, p=unary_operators_probs[index] + binary_operators_probs[index] + variables_probs[index])
         node = [node_value, None, None, index]
                 
         if node_value in unary_operators:

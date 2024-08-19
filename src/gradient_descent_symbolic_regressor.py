@@ -146,13 +146,16 @@ class GradientDescentSymbolicRegressor:
 
             if max_score >= self.stop_score:
                 self.search_results.visualize_best_in_generation()
-                sys.exit(f"WITH A SCORE OF {self.best_score}, THE BEST INDIVIDUAL IS {self.best_individual}")
+                print(f"WITH A SCORE OF {self.best_score}, THE BEST INDIVIDUAL IS {self.best_individual}")
+                #sys.exit(f"WITH A SCORE OF {self.best_score}, THE BEST INDIVIDUAL IS {self.best_individual}")
 
     def _calculate_forward_difference_step(self, X, y, probabilities, node_index, prob_index, iteration, epsilon) -> float:
         # Perturb one parameter slightly
         probabilities_calibration = epsilon / (probabilities[node_index].shape[0] - 1)
         probabilities[node_index] -= probabilities_calibration
         probabilities[node_index][prob_index] += (epsilon + probabilities_calibration)
+        probabilities[node_index] = np.where(probabilities[node_index] < 0, 0, probabilities[node_index])
+        probabilities[node_index] /= probabilities[node_index].sum()
 
         perturbed_individuals = self._generate_n_individuals(
             X,
@@ -173,6 +176,8 @@ class GradientDescentSymbolicRegressor:
         probabilities_calibration = epsilon / (probabilities[node_index].shape[0] - 1)
         probabilities[node_index] += probabilities_calibration
         probabilities[node_index][prob_index] -= (epsilon + probabilities_calibration)
+        probabilities[node_index] = np.where(probabilities[node_index] < 0, 0, probabilities[node_index])
+        probabilities[node_index] /= probabilities[node_index].sum()
 
         perturbed_individuals = self._generate_n_individuals(
             X,
@@ -199,9 +204,11 @@ class GradientDescentSymbolicRegressor:
         
         return gradients
 
+    # EN VEZ DE EVITAR QUE SEA MENOR QUE 0, TRATARLO COMO UNA DISTRIBUCUION DE PROBABILIDADES Y APLICAR SOFTMAX (REVISAR ESTE APPROACH)
     def _update_probabilities(self, gradients: np.ndarray, min_prob: float = 1e-5) -> None:
         self.symbol_probs_minus_t = self.symbol_probs_t.copy()
         self.symbol_probs_t += self.probs_learning_rate * gradients
+        self.symbol_probs_t = np.where(self.symbol_probs_t < 0, 0, self.symbol_probs_t)
         self.symbol_probs_t /= self.symbol_probs_t.sum(axis=1).reshape(-1, 1)
         self.symbol_probs_t = np.clip(self.symbol_probs_t, min_prob, 1)
         self.symbol_probs_t /= self.symbol_probs_t.sum(axis=1).reshape(-1, 1)

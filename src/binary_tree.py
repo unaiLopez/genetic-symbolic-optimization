@@ -101,10 +101,10 @@ def _build_tree(
     if depth == 1:
         node_value = np.random.choice(variables, p=variables_probs[index] / np.sum(variables_probs[index]))
 
-        return [node_value, None, None, index]
+        return [str(node_value), None, None, index]
     else:
         node_value = np.random.choice(binary_operators + unary_operators + variables, p=unary_operators_probs[index] + binary_operators_probs[index] + variables_probs[index])
-        node = [node_value, None, None, index]
+        node = [str(node_value), None, None, index]
                 
         if node_value in unary_operators:
             node[2] = _build_tree(

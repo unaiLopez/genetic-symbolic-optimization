@@ -89,7 +89,7 @@ if __name__ == "__main__":
 
     for formula_name in ["newtons_universal_law_of_gravity", "hooks_law"]:
         if formula_name == "newtons_universal_law_of_gravity":
-            variables, X, y = generate_newtons_law_data()
+            variables, X, y = generate_newtons_law_data_2()
         else:
             variables, X, y = generate_hooks_law_data()
 
@@ -97,13 +97,13 @@ if __name__ == "__main__":
             start_time = time.time()
 
             model = GradientDescentSymbolicRegressor(
-                num_individuals_per_sample=250,
+                num_individuals_per_sample=200,
                 max_individual_depth=4,
                 variables=variables,
                 unary_operators=unary_operators,
                 binary_operators=binary_operators,
                 timeout=600,
-                stop_score=0.999,
+                stop_loss=0.999,
                 max_iterations=35,
                 probs_learning_rate=1e-2,
                 verbose=1,

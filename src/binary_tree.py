@@ -88,9 +88,9 @@ def _build_tree(
     variables: List[str],
     unary_operators: List[str],
     binary_operators: List[str],
-    unary_operators_probs: List[List[float]],
-    binary_operators_probs: List[List[float]],
-    variables_probs: List[List[float]],
+    unary_operators_probs: np.ndarray,
+    binary_operators_probs: np.ndarray,
+    variables_probs: np.ndarray,
     current_depth: int = 1,
     position: int = 1) -> List[Any]:
 
@@ -99,11 +99,10 @@ def _build_tree(
 
     index = _calculate_index(current_depth, position)
     if depth == 1:
-        node_value = np.random.choice(variables, p=variables_probs[index] / np.sum(variables_probs[index]))
-
+        node_value = np.random.choice(variables, p=(variables_probs[index] / variables_probs[index].sum()))
         return [str(node_value), None, None, index]
     else:
-        node_value = np.random.choice(binary_operators + unary_operators + variables, p=unary_operators_probs[index] + binary_operators_probs[index] + variables_probs[index])
+        node_value = np.random.choice(binary_operators + unary_operators + variables, p=np.concatenate((unary_operators_probs[index], binary_operators_probs[index], variables_probs[index])))
         node = [str(node_value), None, None, index]
                 
         if node_value in unary_operators:
@@ -144,7 +143,6 @@ def _build_tree(
                 current_depth + 1,
                 position * 2
             )
-
         return node    
 
 def build_full_binary_tree(
@@ -152,9 +150,9 @@ def build_full_binary_tree(
     variables: List[str],
     unary_operators: List[str],
     binary_operators: List[str],
-    unary_operators_probs: List[List[float]] = None,
-    binary_operators_probs: List[List[float]] = None,
-    variables_probs: List[List[float]] = None) -> List[Any]:
+    unary_operators_probs: np.ndarray,
+    binary_operators_probs: np.ndarray,
+    variables_probs: np.ndarray) -> List[Any]:
 
     full_binary_tree = [
         max_initialization_depth,                       #max_initialization_depth
@@ -191,28 +189,30 @@ def calculate_loss(
     X: np.ndarray,
     y: np.ndarray,
     loss_function: Callable,
-    executable_equation: str) -> float:
+    executable_equation: str,
+    worst_loss: float) -> float:
     
     try:
         loss = loss_function(y, eval(executable_equation))
     except:
-        loss = np.inf
-    if math.isinf(loss) or math.isnan(loss):
-        loss = np.inf
+        loss = np.nan
+    loss = np.nan_to_num(loss, nan=worst_loss, posinf=worst_loss, neginf=worst_loss)
+
     return float(loss)
 
 def calculate_score(
     X: np.ndarray,
     y: np.ndarray,
     score_function: Callable,
-    executable_equation: str) -> float:
+    executable_equation: str,
+    worst_score: float) -> float:
 
     try:
         score = score_function(y, eval(executable_equation))
     except:
-        score = -1.0
-    if math.isinf(score) or math.isnan(score):
-        score = -1.0
+        score = np.nan
+    score = np.nan_to_num(score, nan=worst_score, posinf=worst_score, neginf=worst_score)
+    
     return float(score)
 
 def visualize_binary_tree(node: List[Any], variables: List[str]) -> None:

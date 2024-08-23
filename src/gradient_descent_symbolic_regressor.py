@@ -170,7 +170,7 @@ class GradientDescentSymbolicRegressor:
         self.search_results.add_best_individuals_by_loss_and_complexity(perturbed_individuals, iteration)
         self._check_stop_loss_criteria(perturbed_individuals, perturbed_losses)
         
-        return perturbed_losses.mean()
+        return perturbed_losses.median()
 
     def _calculate_backward_difference_step(self, X, y, probabilities, node_index, prob_index, iteration, epsilon) -> float:
         # Perturb one parameter slightly
@@ -191,7 +191,7 @@ class GradientDescentSymbolicRegressor:
         self.search_results.add_best_individuals_by_loss_and_complexity(perturbed_individuals, iteration)
         self._check_stop_loss_criteria(perturbed_individuals, perturbed_losses)
         
-        return perturbed_losses.mean()
+        return perturbed_losses.median()
 
     def _compute_gradients_central_difference(self, X, y, probabilities, iteration, epsilon=0.25, min_norm: int = -3, max_norm: int = 3) -> np.ndarray:
         gradients = np.zeros((self.max_individual_nodes, self.num_symbols))
